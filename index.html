@@ -261,53 +261,54 @@
             margin-bottom: 10px;
             text-align: center;
         }
+
+        .description {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            text-align: left;
+            color: #333;
+        }
+
+        .description h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .description h3 {
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .description ul {
+            margin: 10px 0;
+        }
+
+        .description li {
+            margin: 5px 0;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
     <div class="demo-container">
-        <h1>Pulsing Dot CSS Animation Demo</h1>
+        <h1>WebGL Custom Layer Pulsing Dots Demo</h1>
         
         <div class="demo-section">
-            <div class="demo-title">Default Red Dot</div>
-            <div class="pulse-dot pulse-dot-red">
-                <div class="pulse-ring"></div>
-                <div class="pulse-dot-inner"></div>
-            </div>
-        </div>
-
-        <div class="demo-section">
-            <div class="demo-title">Green Dot (Carrier Vehicle)</div>
-            <div class="pulse-dot pulse-dot-green">
-                <div class="pulse-ring"></div>
-                <div class="pulse-dot-inner"></div>
-            </div>
-        </div>
-
-        <div class="demo-section">
-            <div class="demo-title">Grey Dot</div>
-            <div class="pulse-dot pulse-dot-grey">
-                <div class="pulse-ring"></div>
-                <div class="pulse-dot-inner"></div>
-            </div>
-        </div>
-
-        <div class="demo-section">
-            <div class="demo-title">Animation Variations</div>
-            <div style="display: flex; gap: 40px; flex-wrap: wrap; justify-content: center;">
-                <div>
-                    <div style="text-align: center; margin-bottom: 10px;">Smooth</div>
-                    <div class="pulse-dot pulse-dot-red pulse-dot-smooth">
-                        <div class="pulse-ring"></div>
-                        <div class="pulse-dot-inner"></div>
-                    </div>
-                </div>
-                <div>
-                    <div style="text-align: center; margin-bottom: 10px;">Fast</div>
-                    <div class="pulse-dot pulse-dot-green pulse-dot-fast">
-                        <div class="pulse-ring"></div>
-                        <div class="pulse-dot-inner"></div>
-                    </div>
-                </div>
+            <h2>How It Works</h2>
+            <div class="description">
+                <p>This demo uses a <strong>Custom WebGL Layer</strong> with custom vertex and fragment shaders to render pulsing dots directly on the GPU. Here's what makes it special:</p>
+                <ul>
+                    <li><strong>GPU-Accelerated Animation</strong>: The pulsing effect is calculated entirely in WebGL shaders</li>
+                    <li><strong>Zero JavaScript Overhead</strong>: No animation loops or DOM manipulation</li>
+                    <li><strong>60fps Performance</strong>: Hardware-accelerated rendering for smooth animation</li>
+                    <li><strong>Scalable</strong>: Can handle thousands of dots without performance impact</li>
+                    <li><strong>Custom Shaders</strong>: Vertex shader handles positioning and animation timing, fragment shader renders the pulsing rings</li>
+                </ul>
+                <p><strong>Technical Details:</strong> The animation uses a sine wave function in the vertex shader to calculate the pulse timing, then the fragment shader renders both the base dot and the pulsing ring with varying opacity based on the animation state.</p>
             </div>
         </div>
 
@@ -319,50 +320,6 @@
             <!-- WebGL pulsing dots - no controls needed -->
         </div>
 
-        <div class="controls">
-            <button onclick="toggleAnimation('red')" id="btn-red">Toggle Red</button>
-            <button onclick="toggleAnimation('green')" id="btn-green">Toggle Green</button>
-            <button onclick="toggleAnimation('grey')" id="btn-grey">Toggle Grey</button>
-        </div>
-
-        <div class="info">
-            <h3>Implementation Comparison:</h3>
-            
-            <h4>🎨 CSS Animations (Demo Section):</h4>
-            <ul>
-                <li><strong>GPU Accelerated:</strong> CSS animations are handled by the GPU, not the CPU</li>
-                <li><strong>No Canvas Redrawing:</strong> No continuous canvas operations at 60fps</li>
-                <li><strong>VM Friendly:</strong> Minimal resource usage, perfect for virtual machines</li>
-                <li><strong>Smooth Performance:</strong> Hardware-accelerated animations</li>
-                <li><strong>Easy Customization:</strong> Simple CSS properties to modify colors, timing, and effects</li>
-            </ul>
-            
-            <h4>🗺️ Mapbox addLayer (Map Implementation):</h4>
-            <ul>
-                <li><strong>Native Integration:</strong> Uses Mapbox's native rendering engine</li>
-                <li><strong>Scalable Performance:</strong> Can handle thousands of pulsing dots efficiently</li>
-                <li><strong>Data-Driven Styling:</strong> Dynamic styling based on GeoJSON properties</li>
-                <li><strong>Zoom Responsive:</strong> Automatically scales with map zoom level</li>
-                <li><strong>Interactive Features:</strong> Easy to add click handlers, popups, and interactions</li>
-                <li><strong>Memory Efficient:</strong> No DOM elements, pure GPU rendering</li>
-            </ul>
-            
-            <h3>Key Implementation Details:</h3>
-            <ul>
-                <li><strong>CSS Method:</strong> <code>animation: pulse 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;</code></li>
-                <li><strong>Mapbox Method:</strong> <code>requestAnimationFrame</code> with <code>setPaintProperty()</code></li>
-                <li><strong>Scale Animation:</strong> <code>transform: scale(0.33)</code> to <code>scale(1.0)</code></li>
-                <li><strong>Opacity Fade:</strong> <code>opacity: 1</code> to <code>opacity: 0</code></li>
-                <li><strong>Duration:</strong> 2 seconds with smooth easing curves</li>
-            </ul>
-            
-            <h3>Performance Benefits:</h3>
-            <ul>
-                <li><strong>CSS Animations:</strong> Best for static demos and UI elements</li>
-                <li><strong>Mapbox Layers:</strong> Best for map-based applications with many markers</li>
-                <li><strong>Hybrid Approach:</strong> Use CSS for demos, Mapbox layers for production maps</li>
-            </ul>
-        </div>
     </div>
 
     <script>
@@ -783,34 +740,12 @@
 
         // WebGL handles everything - no additional functions needed
 
-        // Original toggle animation function
-        function toggleAnimation(color) {
-            const dots = document.querySelectorAll(`.pulse-dot-${color}`);
-            const button = document.getElementById(`btn-${color}`);
-            
-            dots.forEach(dot => {
-                const ring = dot.querySelector('.pulse-ring');
-                if (ring.style.animationPlayState === 'paused') {
-                    ring.style.animationPlayState = 'running';
-                    button.textContent = `Pause ${color.charAt(0).toUpperCase() + color.slice(1)}`;
-                    button.classList.add('active');
-                } else {
-                    ring.style.animationPlayState = 'paused';
-                    button.textContent = `Resume ${color.charAt(0).toUpperCase() + color.slice(1)}`;
-                    button.classList.remove('active');
-                }
-            });
-        }
+        // Removed toggle animation function - not needed for WebGL demo
 
         // Removed test animation function - WebGL handles everything
 
         // Initialize everything when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize button text for demo controls
-            document.getElementById('btn-red').textContent = 'Pause Red';
-            document.getElementById('btn-green').textContent = 'Pause Green';
-            document.getElementById('btn-grey').textContent = 'Pause Grey';
-            
             // Initialize map with WebGL pulsing dots
             initMap();
         });
