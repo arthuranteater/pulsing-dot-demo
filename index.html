@@ -321,7 +321,8 @@
                 <button onclick="toggleMapMarkers('green')" id="btn-map-green">Toggle Green Markers</button>
                 <button onclick="toggleMapMarkers('grey')" id="btn-map-grey">Toggle Grey Markers</button>
                 <button onclick="addRandomMarker()" id="btn-add-marker">Add Random Marker</button>
-                <button onclick="switchToEfficientMode()" id="btn-efficient">Switch to Efficient Mode</button>
+                <button onclick="switchToPreRenderedMode()" id="btn-prerendered">PreRendered Mode (Active)</button>
+                <button onclick="switchToLowFrameMode()" id="btn-lowframe">Switch to Low Frame Mode</button>
                 <button onclick="switchToCSSMode()" id="btn-css">Switch to CSS Overlay Mode</button>
             </div>
         </div>
@@ -399,7 +400,81 @@
             });
         }
 
-        // Import the optimized pulsing dot function
+        // Import the pre-rendered pulsing dot function (most GPU-efficient)
+        function createPreRenderedPulsingDot(isCarrierVehicleOnRoute = false, isGrey = false) {
+            const size = 75;
+            const frameCount = 20; // 20 frames for smooth animation
+            let currentFrame = 0;
+            let lastUpdate = 0;
+            const frameInterval = 100; // 100ms per frame
+            
+            const colors = isGrey 
+                ? { outer: 'rgba(55, 64, 83, 0.6)', inner: 'rgba(55, 64, 83, 1)', stroke: 'rgba(237, 240, 240, 0.7)' }
+                : isCarrierVehicleOnRoute 
+                    ? { outer: 'rgba(84, 199, 116, 0.6)', inner: 'rgba(84, 199, 116, 1)', stroke: 'rgba(84, 199, 116, 1)' }
+                    : { outer: 'rgba(219, 55, 19, 0.6)', inner: 'rgba(219, 55, 19, 1)', stroke: 'rgba(237, 240, 240, 0.7)' };
+
+            return {
+                size: size,
+                width: size,
+                height: size,
+                data: new Uint8Array(size * size * 4),
+                isCarrierVehicleOnRoute: isCarrierVehicleOnRoute,
+                isGrey: isGrey,
+                stopPulse: false,
+                preRenderedFrames: null,
+
+                onAdd: function () {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = this.width;
+                    canvas.height = this.height;
+                    this.context = canvas.getContext('2d', { willReadFrequently: true });
+                    
+                    // Pre-render all animation frames
+                    this.preRenderedFrames = [];
+                    for (let i = 0; i < frameCount; i++) {
+                        const t = i / frameCount;
+                        const radius = (this.size / 2) * 0.3;
+                        const outerRadius = (this.size / 2) * 0.7 * t + radius;
+                        
+                        this.context.clearRect(0, 0, this.width, this.height);
+                        this.context.beginPath();
+                        this.context.arc(this.width / 2, this.height / 2, outerRadius, 0, Math.PI * 2);
+                        this.context.fillStyle = `${colors.outer.replace('0.6', (0.6 - t).toFixed(2)})`;
+                        this.context.fill();
+                        
+                        this.context.beginPath();
+                        this.context.arc(this.width / 2, this.height / 2, radius, 0, Math.PI * 2);
+                        this.context.fillStyle = colors.inner;
+                        this.context.strokeStyle = colors.stroke;
+                        this.context.lineWidth = 2;
+                        this.context.fill();
+                        this.context.stroke();
+                        
+                        this.preRenderedFrames.push(
+                            this.context.getImageData(0, 0, this.width, this.height).data.slice()
+                        );
+                    }
+                },
+
+                render: function () {
+                    const now = performance.now();
+                    if (now - lastUpdate < frameInterval) {
+                        return false;
+                    }
+                    lastUpdate = now;
+
+                    if (this.preRenderedFrames && this.preRenderedFrames.length > 0) {
+                        this.data = this.preRenderedFrames[currentFrame];
+                        currentFrame = (currentFrame + 1) % this.preRenderedFrames.length;
+                        return true;
+                    }
+                    return false;
+                },
+            };
+        }
+
+        // Keep the low frame rate function as backup
         function createLowFrameRatePulsingDot(isCarrierVehicleOnRoute = false, isGrey = false) {
             const size = 75;
             let lastUpdate = 0;
@@ -474,14 +549,14 @@
             };
         }
 
-        // Setup pulsing dots using the imported function
+        // Setup pulsing dots using the pre-rendered function (most GPU-efficient)
         function setupPulsingDots() {
-            console.log('Setting up pulsing dots with imported function...');
+            console.log('Setting up pre-rendered pulsing dots (maximum GPU efficiency)...');
             
-            // Create pulsing dot instances using the imported function
-            const redDot = createLowFrameRatePulsingDot(false, false); // Red dot
-            const greenDot = createLowFrameRatePulsingDot(true, false); // Green dot (carrier vehicle)
-            const greyDot = createLowFrameRatePulsingDot(false, true); // Grey dot
+            // Create pulsing dot instances using the pre-rendered function
+            const redDot = createPreRenderedPulsingDot(false, false); // Red dot
+            const greenDot = createPreRenderedPulsingDot(true, false); // Green dot (carrier vehicle)
+            const greyDot = createPreRenderedPulsingDot(false, true); // Grey dot
             
             // Create markers using the pulsing dot functions
             const redMarker = new mapboxgl.Marker(redDot)
@@ -603,8 +678,8 @@
             }
         }
 
-        // Switch to efficient mode (using imported function)
-        function switchToEfficientMode() {
+        // Switch to pre-rendered mode (most GPU-efficient)
+        function switchToPreRenderedMode() {
             // Clear existing markers
             Object.values(markers).flat().forEach(marker => marker.remove());
             markers.red = [];
@@ -615,10 +690,43 @@
             const overlay = document.getElementById('pulsing-overlay');
             if (overlay) overlay.remove();
             
-            // Recreate markers with imported function
+            // Recreate markers with pre-rendered function
             setupPulsingDots();
             
-            document.getElementById('btn-efficient').textContent = 'Efficient Mode Active';
+            document.getElementById('btn-prerendered').textContent = 'PreRendered Mode (Active)';
+            document.getElementById('btn-lowframe').textContent = 'Switch to Low Frame Mode';
+            document.getElementById('btn-css').textContent = 'Switch to CSS Overlay Mode';
+        }
+
+        // Switch to low frame rate mode
+        function switchToLowFrameMode() {
+            // Clear existing markers
+            Object.values(markers).flat().forEach(marker => marker.remove());
+            markers.red = [];
+            markers.green = [];
+            markers.grey = [];
+            
+            // Remove CSS overlay if it exists
+            const overlay = document.getElementById('pulsing-overlay');
+            if (overlay) overlay.remove();
+            
+            // Create markers with low frame rate function
+            console.log('Setting up low frame rate pulsing dots...');
+            
+            const redDot = createLowFrameRatePulsingDot(false, false);
+            const greenDot = createLowFrameRatePulsingDot(true, false);
+            const greyDot = createLowFrameRatePulsingDot(false, true);
+            
+            const redMarker = new mapboxgl.Marker(redDot).setLngLat([-74.5, 40]).addTo(map);
+            const greenMarker = new mapboxgl.Marker(greenDot).setLngLat([-74.3, 40.1]).addTo(map);
+            const greyMarker = new mapboxgl.Marker(greyDot).setLngLat([-74.7, 39.9]).addTo(map);
+            
+            markers.red = [redMarker];
+            markers.green = [greenMarker];
+            markers.grey = [greyMarker];
+            
+            document.getElementById('btn-lowframe').textContent = 'Low Frame Mode (Active)';
+            document.getElementById('btn-prerendered').textContent = 'Switch to PreRendered Mode';
             document.getElementById('btn-css').textContent = 'Switch to CSS Overlay Mode';
         }
 
@@ -667,14 +775,14 @@
             const lng = center.lng + (Math.random() - 0.5) * 0.1;
             const lat = center.lat + (Math.random() - 0.5) * 0.1;
             
-            // Create pulsing dot based on color
+            // Create pre-rendered pulsing dot based on color
             let pulsingDot;
             if (color === 'green') {
-                pulsingDot = createLowFrameRatePulsingDot(true, false); // Carrier vehicle
+                pulsingDot = createPreRenderedPulsingDot(true, false); // Carrier vehicle
             } else if (color === 'grey') {
-                pulsingDot = createLowFrameRatePulsingDot(false, true); // Grey
+                pulsingDot = createPreRenderedPulsingDot(false, true); // Grey
             } else {
-                pulsingDot = createLowFrameRatePulsingDot(false, false); // Red
+                pulsingDot = createPreRenderedPulsingDot(false, false); // Red
             }
             
             // Create marker
