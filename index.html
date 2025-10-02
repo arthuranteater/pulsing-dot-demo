@@ -229,15 +229,25 @@
     </div>
 
     <script>
-        // Set your Mapbox access token
-        mapboxgl.accessToken = 'pk.eyJ1IjoiaHVudGFwcGxlZ2F0ZSIsImEiOiJjbWc5bjA5bmgwYWY0MmtvdW12eWo5cjZzIn0.bFFqd6EHoa2F-CPvvKz8WQ';
+        // Set your Mapbox access token - using a public demo token
+        mapboxgl.accessToken = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
         
         // Initialize map
         const map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/dark-v11',
+            style: 'mapbox://styles/mapbox/streets-v12',
             center: [-74.5, 40],
             zoom: 9
+        });
+
+        // Add error handling
+        map.on('error', function(e) {
+            console.error('Map error:', e);
+            document.getElementById('map').innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #2d2d2d; color: #888; border-radius: 8px;"><div style="text-align: center;"><h3>Map Error</h3><p>Unable to load map. This might be due to:</p><ul style="text-align: left; display: inline-block;"><li>Network connectivity issues</li><li>Mapbox token permissions</li><li>WebGL support</li></ul></div></div>';
+        });
+
+        map.on('load', function() {
+            console.log('Map loaded successfully!');
         });
 
         // Animation variables
