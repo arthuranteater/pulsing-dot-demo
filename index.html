@@ -81,13 +81,14 @@
         <div class="demo-section">
             <h2>How It Works</h2>
             <div class="description">
-                <p>This demo uses <strong>Mapbox native circle layers</strong> with data-driven styling to create pulsing dots that work even with software WebGL fallback. Here's what makes it special:</p>
+                <p>This demo uses <strong>Mapbox native circle layers</strong> with data-driven styling to create pulsing dots that work reliably across all browsers and WebGL configurations. Here's what makes it special:</p>
                 <ul>
-                    <li><strong>Software WebGL Compatible</strong>: Works even when hardware WebGL is not available</li>
+                    <li><strong>Universal Compatibility</strong>: Works with both hardware and software WebGL</li>
                     <li><strong>Native Mapbox Rendering</strong>: Uses Mapbox's optimized rendering engine</li>
                     <li><strong>Data-Driven Animation</strong>: Animation controlled by updating GeoJSON data properties</li>
                     <li><strong>60fps Performance</strong>: Smooth animation using requestAnimationFrame</li>
                     <li><strong>Scalable</strong>: Can handle thousands of dots efficiently</li>
+                    <li><strong>Reliable</strong>: No WebGL shader compilation issues</li>
                 </ul>
                 <p><strong>Technical Details:</strong> The animation uses a sine wave function to calculate the pulse timing, then updates the GeoJSON source data with the current animation state. Mapbox's native circle layers render the base dots and pulsing rings with interpolated radius and opacity based on the animation progress.</p>
             </div>
@@ -128,9 +129,9 @@
             });
         }
 
-        // Setup pulsing dots - try custom WebGL first, fallback to native layers
+        // Setup pulsing dots - use native layers for reliability
         function setupPulsingDots() {
-            console.log('Setting up pulsing dots...');
+            console.log('Setting up pulsing dots with native layers...');
             
             // Add source for pulsing dots
             map.addSource('dot-point', {
@@ -142,7 +143,8 @@
                             type: 'Feature',
                             properties: {
                                 color: 'red',
-                                id: 0
+                                id: 0,
+                                pulse_scale: 0
                             },
                             geometry: {
                                 type: 'Point',
@@ -153,7 +155,8 @@
                             type: 'Feature',
                             properties: {
                                 color: 'green',
-                                id: 1
+                                id: 1,
+                                pulse_scale: 0
                             },
                             geometry: {
                                 type: 'Point',
@@ -164,7 +167,8 @@
                             type: 'Feature',
                             properties: {
                                 color: 'grey',
-                                id: 2
+                                id: 2,
+                                pulse_scale: 0
                             },
                             geometry: {
                                 type: 'Point',
@@ -175,14 +179,8 @@
                 }
             });
 
-            // Try custom WebGL layer first
-            try {
-                setupCustomWebGLLayer();
-                console.log('Custom WebGL layer created successfully');
-            } catch (error) {
-                console.warn('Custom WebGL layer failed, falling back to native layers:', error);
-                setupNativeLayers();
-            }
+            // Use native layers for reliability
+            setupNativeLayers();
         }
 
         // Custom WebGL Layer (most efficient when hardware WebGL is available)
