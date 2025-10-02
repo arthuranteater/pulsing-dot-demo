@@ -316,11 +316,7 @@
             <div class="map-container">
                 <div id="map"></div>
             </div>
-            <div class="controls">
-                <button onclick="switchToPreRenderedMode()" id="btn-prerendered">WebGL Mode (Active)</button>
-                <button onclick="switchToLowFrameMode()" id="btn-lowframe">Switch to Low Frame Mode</button>
-                <button onclick="switchToCSSMode()" id="btn-css">Switch to CSS Overlay Mode</button>
-            </div>
+            <!-- WebGL pulsing dots - no controls needed -->
         </div>
 
         <div class="controls">
@@ -759,185 +755,9 @@
 
         // Animation is now handled by the imported function - no additional animation needed
 
-        // Alternative: Use CSS animations on a single overlay layer (most efficient)
-        function createCSSPulsingOverlay() {
-            // Remove existing layers
-            if (map.getLayer('pulsing-rings')) map.removeLayer('pulsing-rings');
-            if (map.getLayer('pulsing-dots-inner')) map.removeLayer('pulsing-dots-inner');
-            
-            // Create a single overlay with CSS animations
-            const overlay = document.createElement('div');
-            overlay.id = 'pulsing-overlay';
-            overlay.style.position = 'absolute';
-            overlay.style.pointerEvents = 'none';
-            overlay.style.zIndex = '1000';
-            
-            // Add CSS for pulsing animation
-            const style = document.createElement('style');
-            style.textContent = `
-                .pulsing-overlay-dot {
-                    position: absolute;
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    transform: translate(-50%, -50%);
-                    pointer-events: none;
-                }
-                .pulsing-overlay-dot::before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    border-radius: 50%;
-                    animation: pulse-overlay 2s infinite;
-                }
-                @keyframes pulse-overlay {
-                    0% { transform: scale(0.33); opacity: 1; }
-                    80%, 100% { transform: scale(1); opacity: 0; }
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Add dots to overlay
-            const dots = [
-                { color: '#db3713', lng: -74.5, lat: 40 },
-                { color: '#54c774', lng: -74.3, lat: 40.1 },
-                { color: '#374053', lng: -74.7, lat: 39.9 }
-            ];
-            
-            dots.forEach(dot => {
-                const dotEl = document.createElement('div');
-                dotEl.className = 'pulsing-overlay-dot';
-                dotEl.style.backgroundColor = dot.color;
-                dotEl.style.border = '2px solid #edf0f0';
-                overlay.appendChild(dotEl);
-                
-                // Position using map projection
-                const pos = map.project([dot.lng, dot.lat]);
-                dotEl.style.left = pos.x + 'px';
-                dotEl.style.top = pos.y + 'px';
-            });
-            
-            // Add overlay to map container
-            map.getContainer().appendChild(overlay);
-            
-            // Update positions on map move
-            map.on('move', updateOverlayPositions);
-            map.on('zoom', updateOverlayPositions);
-        }
-        
-        function updateOverlayPositions() {
-            const overlay = document.getElementById('pulsing-overlay');
-            if (!overlay) return;
-            
-            const dots = [
-                { lng: -74.5, lat: 40 },
-                { lng: -74.3, lat: 40.1 },
-                { lng: -74.7, lat: 39.9 }
-            ];
-            
-            const dotElements = overlay.querySelectorAll('.pulsing-overlay-dot');
-            dots.forEach((dot, index) => {
-                if (dotElements[index]) {
-                    const pos = map.project([dot.lng, dot.lat]);
-                    dotElements[index].style.left = pos.x + 'px';
-                    dotElements[index].style.top = pos.y + 'px';
-                }
-            });
-        }
+        // Removed CSS overlay functions - using WebGL only
 
-        // Stop the pulsing animation
-        function stopPulsingAnimation() {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-        }
-
-        // Switch to WebGL mode (most efficient)
-        function switchToPreRenderedMode() {
-            // Clear existing layers and sources
-            if (map.getLayer('pulsing-webgl')) map.removeLayer('pulsing-webgl');
-            if (map.getLayer('base-dot')) map.removeLayer('base-dot');
-            if (map.getLayer('pulsing-circle')) map.removeLayer('pulsing-circle');
-            if (map.getSource('dot-point')) map.removeSource('dot-point');
-            
-            // Remove CSS overlay if it exists
-            const overlay = document.getElementById('pulsing-overlay');
-            if (overlay) overlay.remove();
-            
-            // Recreate with WebGL layers
-            setupPulsingDots();
-            
-            document.getElementById('btn-prerendered').textContent = 'WebGL Mode (Active)';
-            document.getElementById('btn-lowframe').textContent = 'Switch to Low Frame Mode';
-            document.getElementById('btn-css').textContent = 'Switch to CSS Overlay Mode';
-        }
-
-        // Switch to low frame rate mode (using markers)
-        function switchToLowFrameMode() {
-            // Stop any existing animation
-            stopPulseAnimation();
-            
-            // Clear existing layers and sources
-            if (map.getLayer('base-dot')) map.removeLayer('base-dot');
-            if (map.getLayer('pulsing-circle')) map.removeLayer('pulsing-circle');
-            if (map.getSource('dot-point')) map.removeSource('dot-point');
-            
-            // Remove CSS overlay if it exists
-            const overlay = document.getElementById('pulsing-overlay');
-            if (overlay) overlay.remove();
-            
-            // Create markers with low frame rate function
-            console.log('Setting up low frame rate pulsing dots...');
-            
-            const redDot = createLowFrameRatePulsingDot(false, false);
-            const greenDot = createLowFrameRatePulsingDot(true, false);
-            const greyDot = createLowFrameRatePulsingDot(false, true);
-            
-            const redMarker = new mapboxgl.Marker(redDot).setLngLat([-74.5, 40]).addTo(map);
-            const greenMarker = new mapboxgl.Marker(greenDot).setLngLat([-74.3, 40.1]).addTo(map);
-            const greyMarker = new mapboxgl.Marker(greyDot).setLngLat([-74.7, 39.9]).addTo(map);
-            
-            markers.red = [redMarker];
-            markers.green = [greenMarker];
-            markers.grey = [greyMarker];
-            
-            document.getElementById('btn-lowframe').textContent = 'Low Frame Mode (Active)';
-            document.getElementById('btn-prerendered').textContent = 'Switch to Data-Driven Mode';
-            document.getElementById('btn-css').textContent = 'Switch to CSS Overlay Mode';
-        }
-
-        // Switch to CSS overlay mode (most efficient)
-        function switchToCSSMode() {
-            // Stop any existing animation
-            stopPulseAnimation();
-            
-            // Clear existing layers and sources
-            if (map.getLayer('base-dot')) map.removeLayer('base-dot');
-            if (map.getLayer('pulsing-circle')) map.removeLayer('pulsing-circle');
-            if (map.getSource('dot-point')) map.removeSource('dot-point');
-            
-            // Clear existing markers
-            Object.values(markers).flat().forEach(marker => marker.remove());
-            markers.red = [];
-            markers.green = [];
-            markers.grey = [];
-            
-            // Create CSS overlay
-            createCSSPulsingOverlay();
-            
-            document.getElementById('btn-css').textContent = 'CSS Overlay Mode (Active)';
-            document.getElementById('btn-prerendered').textContent = 'Switch to Data-Driven Mode';
-            document.getElementById('btn-lowframe').textContent = 'Switch to Low Frame Mode';
-        }
-
-        // Legacy marker functions (kept for compatibility but not used in layer-based approach)
-        // These are now replaced by the addLayer implementation above
-
-        // Removed toggle and add marker functions - not needed for demo
+        // WebGL handles everything - no additional functions needed
 
         // Original toggle animation function
         function toggleAnimation(color) {
@@ -958,26 +778,7 @@
             });
         }
 
-        // Debug function to test animation
-        function testAnimation() {
-            console.log('Testing animation...');
-            const testDiv = document.createElement('div');
-            testDiv.style.position = 'fixed';
-            testDiv.style.top = '10px';
-            testDiv.style.left = '10px';
-            testDiv.style.zIndex = '9999';
-            testDiv.innerHTML = `
-                <div class="pulse-dot pulse-dot-red">
-                    <div class="pulse-ring"></div>
-                    <div class="pulse-dot-inner"></div>
-                </div>
-            `;
-            document.body.appendChild(testDiv);
-            
-            setTimeout(() => {
-                document.body.removeChild(testDiv);
-            }, 5000);
-        }
+        // Removed test animation function - WebGL handles everything
 
         // Initialize everything when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -986,13 +787,8 @@
             document.getElementById('btn-green').textContent = 'Pause Green';
             document.getElementById('btn-grey').textContent = 'Pause Grey';
             
-            // Initialize map
+            // Initialize map with WebGL pulsing dots
             initMap();
-            
-            // Test animation after a short delay
-            setTimeout(testAnimation, 1000);
-            
-            // No fallback needed - using proper image-based layers
         });
 
         // Using proper image-based layers - no fallbacks needed
