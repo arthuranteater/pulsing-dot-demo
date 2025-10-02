@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pulsing Dots Demo</title>
+    <!-- Mapbox GL JS -->
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
     <style>
         body {
             margin: 0;
@@ -220,25 +223,140 @@
         </div>
 
         <div class="demo-section">
-            <div class="demo-title">Map-style Layout</div>
-            <div class="map-container">
-                <div class="map-placeholder">
-                    <h3>Map Area</h3>
-                    <p>Pulsing dots positioned like map markers</p>
-                </div>
-                <div class="map-dots">
-                    <div class="map-dot map-dot-red">
-                        <div class="pulse-ring"></div>
-                    </div>
-                    <div class="map-dot map-dot-green">
-                        <div class="pulse-ring"></div>
-                    </div>
-                    <div class="map-dot map-dot-grey">
-                        <div class="pulse-ring"></div>
-                    </div>
-                </div>
-            </div>
+            <div class="demo-title">Map with Pulsing Dots</div>
+            <div id="map" style="width: 100%; height: 500px; border-radius: 8px;"></div>
         </div>
     </div>
+
+    <script>
+        // Set your Mapbox access token
+        mapboxgl.accessToken = 'pk.eyJ1IjoiaHVudGFwcGxlZ2F0ZSIsImEiOiJjbWc5bjA5bmgwYWY0MmtvdW12eWo5cjZzIn0.bFFqd6EHoa2F-CPvvKz8WQ';
+        
+        // Initialize map
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            center: [-74.5, 40],
+            zoom: 9
+        });
+
+        // Animation variables
+        let animationId;
+        let startTime = performance.now();
+        const duration = 2000; // 2 seconds
+
+        // Wait for map to load
+        map.on('load', function() {
+            console.log('Map loaded, adding pulsing dots...');
+            
+            // Add source
+            map.addSource('pulsing-dots', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: { color: 'red', id: 1 },
+                            geometry: { type: 'Point', coordinates: [-74.5, 40] }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: { color: 'green', id: 2 },
+                            geometry: { type: 'Point', coordinates: [-74.3, 40.1] }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: { color: 'grey', id: 3 },
+                            geometry: { type: 'Point', coordinates: [-74.7, 39.9] }
+                        }
+                    ]
+                }
+            });
+
+            // Add base dot layer
+            map.addLayer({
+                id: 'base-dots',
+                type: 'circle',
+                source: 'pulsing-dots',
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': [
+                        'case',
+                        ['==', ['get', 'color'], 'red'], '#db3713',
+                        ['==', ['get', 'color'], 'green'], '#54c774',
+                        '#374053'
+                    ],
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#edf0f0'
+                }
+            });
+
+            // Add pulsing ring layer
+            map.addLayer({
+                id: 'pulsing-rings',
+                type: 'circle',
+                source: 'pulsing-dots',
+                paint: {
+                    'circle-radius': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'pulse_scale'],
+                        0, 8,
+                        1, 25
+                    ],
+                    'circle-color': [
+                        'case',
+                        ['==', ['get', 'color'], 'red'], '#db3713',
+                        ['==', ['get', 'color'], 'green'], '#54c774',
+                        '#374053'
+                    ],
+                    'circle-opacity': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'pulse_scale'],
+                        0, 0.6,
+                        1, 0
+                    ]
+                }
+            });
+
+            // Start animation
+            startAnimation();
+        });
+
+        function startAnimation() {
+            function animate(timestamp) {
+                const elapsed = (timestamp - startTime) % duration;
+                const t = elapsed / duration;
+                
+                // Update source data
+                map.getSource('pulsing-dots').setData({
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: { color: 'red', id: 1, pulse_scale: t },
+                            geometry: { type: 'Point', coordinates: [-74.5, 40] }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: { color: 'green', id: 2, pulse_scale: t },
+                            geometry: { type: 'Point', coordinates: [-74.3, 40.1] }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: { color: 'grey', id: 3, pulse_scale: t },
+                            geometry: { type: 'Point', coordinates: [-74.7, 39.9] }
+                        }
+                    ]
+                });
+                
+                animationId = requestAnimationFrame(animate);
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+    </script>
 </body>
 </html>
