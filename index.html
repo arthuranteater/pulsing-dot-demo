@@ -574,7 +574,7 @@
                             v_pulse = sin(t * 3.14159);
                             
                             gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
-                            gl_PointSize = 40.0; // Make dots visible
+                            gl_PointSize = 30.0; // Make dots visible
                         }
                     `;
                     
@@ -633,15 +633,30 @@
                     const vertexShaderObj = gl.createShader(gl.VERTEX_SHADER);
                     gl.shaderSource(vertexShaderObj, vertexShader);
                     gl.compileShader(vertexShaderObj);
-                    
+
+                    // Check vertex shader compilation
+                    if (!gl.getShaderParameter(vertexShaderObj, gl.COMPILE_STATUS)) {
+                        console.error('Vertex shader compilation error:', gl.getShaderInfoLog(vertexShaderObj));
+                    }
+
                     const fragmentShaderObj = gl.createShader(gl.FRAGMENT_SHADER);
                     gl.shaderSource(fragmentShaderObj, fragmentShader);
                     gl.compileShader(fragmentShaderObj);
-                    
+
+                    // Check fragment shader compilation
+                    if (!gl.getShaderParameter(fragmentShaderObj, gl.COMPILE_STATUS)) {
+                        console.error('Fragment shader compilation error:', gl.getShaderInfoLog(fragmentShaderObj));
+                    }
+
                     this.program = gl.createProgram();
                     gl.attachShader(this.program, vertexShaderObj);
                     gl.attachShader(this.program, fragmentShaderObj);
                     gl.linkProgram(this.program);
+
+                    // Check program linking
+                    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
+                        console.error('Program linking error:', gl.getProgramInfoLog(this.program));
+                    }
                     
                     // Get attribute and uniform locations
                     this.a_pos = gl.getAttribLocation(this.program, 'a_pos');
@@ -663,8 +678,7 @@
                     gl.uniform1f(this.u_time, performance.now() / 1000.0);
                     gl.uniform1f(this.u_zoom, map.getZoom());
                     
-                    // Set point size
-                    gl.enable(gl.PROGRAM_POINT_SIZE);
+                    // Point size is set in vertex shader
                     
                     // Get source data
                     const source = map.getSource('dot-point');
