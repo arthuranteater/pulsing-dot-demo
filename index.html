@@ -317,11 +317,7 @@
                 <div id="map"></div>
             </div>
             <div class="controls">
-                <button onclick="toggleMapMarkers('red')" id="btn-map-red">Toggle Red Markers</button>
-                <button onclick="toggleMapMarkers('green')" id="btn-map-green">Toggle Green Markers</button>
-                <button onclick="toggleMapMarkers('grey')" id="btn-map-grey">Toggle Grey Markers</button>
-                <button onclick="addRandomMarker()" id="btn-add-marker">Add Random Marker</button>
-                <button onclick="switchToPreRenderedMode()" id="btn-prerendered">PreRendered Mode (Active)</button>
+                <button onclick="switchToPreRenderedMode()" id="btn-prerendered">Data-Driven Mode (Active)</button>
                 <button onclick="switchToLowFrameMode()" id="btn-lowframe">Switch to Low Frame Mode</button>
                 <button onclick="switchToCSSMode()" id="btn-css">Switch to CSS Overlay Mode</button>
             </div>
@@ -549,84 +545,170 @@
             };
         }
 
-        // Setup pulsing dots using image-based layers
+        // Setup pulsing dots using data-driven styling
         function setupPulsingDots() {
-            console.log('Setting up image-based pulsing dots...');
+            console.log('Setting up data-driven pulsing dots...');
             
-            // Create pulsing dot instances
-            const redDot = createPreRenderedPulsingDot(false, false);
-            const greenDot = createPreRenderedPulsingDot(true, false);
-            const greyDot = createPreRenderedPulsingDot(false, true);
-            
-            // Initialize the dots (this triggers onAdd and pre-rendering)
-            redDot.onAdd();
-            greenDot.onAdd();
-            greyDot.onAdd();
-            
-            // Create GeoJSON data for the dots
-            const pulsingDotsData = {
-                type: 'FeatureCollection',
-                features: [
-                    {
-                        type: 'Feature',
-                        properties: { 
-                            id: 'red-dot',
-                            color: 'red'
-                        },
-                        geometry: {
-                            type: 'Point',
-                            coordinates: [-74.5, 40]
-                        }
-                    },
-                    {
-                        type: 'Feature',
-                        properties: { 
-                            id: 'green-dot',
-                            color: 'green'
-                        },
-                        geometry: {
-                            type: 'Point',
-                            coordinates: [-74.3, 40.1]
-                        }
-                    },
-                    {
-                        type: 'Feature',
-                        properties: { 
-                            id: 'grey-dot',
-                            color: 'grey'
-                        },
-                        geometry: {
-                            type: 'Point',
-                            coordinates: [-74.7, 39.9]
-                        }
-                    }
-                ]
-            };
-            
-            // Add source
-            map.addSource('pulsing-dots', {
+            // Add source for pulsing dots
+            map.addSource('dot-point', {
                 type: 'geojson',
-                data: pulsingDotsData
-            });
-            
-            // Add layer using the red dot as the image
-            map.addLayer({
-                id: 'pulsing-dots-layer',
-                type: 'symbol',
-                source: 'pulsing-dots',
-                layout: {
-                    'icon-image': 'pulsing-dot-red',
-                    'icon-size': 1,
-                    'icon-allow-overlap': true
+                data: {
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: {
+                                color: 'red',
+                                pulse_scale: 0
+                            },
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [-74.5, 40]
+                            }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: {
+                                color: 'green',
+                                pulse_scale: 0
+                            },
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [-74.3, 40.1]
+                            }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: {
+                                color: 'grey',
+                                pulse_scale: 0
+                            },
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [-74.7, 39.9]
+                            }
+                        }
+                    ]
                 }
             });
+
+            // Add the base, non-pulsing dot layer
+            map.addLayer({
+                id: 'base-dot',
+                type: 'circle',
+                source: 'dot-point',
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': [
+                        'case',
+                        ['==', ['get', 'color'], 'red'], '#db3713',
+                        ['==', ['get', 'color'], 'green'], '#54c774',
+                        ['==', ['get', 'color'], 'grey'], '#374053',
+                        '#db3713'
+                    ],
+                    'circle-stroke-color': '#edf0f0',
+                    'circle-stroke-width': 2
+                }
+            });
+
+            // Add the pulsing effect layer
+            map.addLayer({
+                id: 'pulsing-circle',
+                type: 'circle',
+                source: 'dot-point',
+                paint: {
+                    'circle-radius': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'pulse_scale'],
+                        0, 8,
+                        1, 30
+                    ],
+                    'circle-color': [
+                        'case',
+                        ['==', ['get', 'color'], 'red'], '#db3713',
+                        ['==', ['get', 'color'], 'green'], '#54c774',
+                        ['==', ['get', 'color'], 'grey'], '#374053',
+                        '#db3713'
+                    ],
+                    'circle-opacity': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'pulse_scale'],
+                        0, 0.6,
+                        1, 0
+                    ]
+                }
+            });
+
+            // Start the animation
+            startPulseAnimation();
             
-            // Add the pulsing dot images to the map
-            map.addImage('pulsing-dot-red', redDot);
-            map.addImage('pulsing-dot-green', greenDot);
-            map.addImage('pulsing-dot-grey', greyDot);
+            console.log('Data-driven pulsing dots created');
+        }
+
+        // Animation variables
+        let animationId;
+        let startTime = performance.now();
+        const duration = 2000; // 2 seconds
+
+        // Start the pulsing animation
+        function startPulseAnimation() {
+            function animatePulse(timestamp) {
+                const t = ((timestamp - startTime) % duration) / duration;
+                
+                // Update the source's data to trigger the animation
+                map.getSource('dot-point').setData({
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: {
+                                color: 'red',
+                                pulse_scale: t
+                            },
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [-74.5, 40]
+                            }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: {
+                                color: 'green',
+                                pulse_scale: t
+                            },
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [-74.3, 40.1]
+                            }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: {
+                                color: 'grey',
+                                pulse_scale: t
+                            },
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [-74.7, 39.9]
+                            }
+                        }
+                    ]
+                });
+
+                animationId = requestAnimationFrame(animatePulse);
+            }
             
-            console.log('Image-based pulsing dots layer created');
+            animationId = requestAnimationFrame(animatePulse);
+        }
+
+        // Stop the pulsing animation
+        function stopPulseAnimation() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
         }
 
         // Animation is now handled by the imported function - no additional animation needed
@@ -728,31 +810,37 @@
             }
         }
 
-        // Switch to pre-rendered mode (most GPU-efficient)
+        // Switch to data-driven mode (most efficient)
         function switchToPreRenderedMode() {
+            // Stop any existing animation
+            stopPulseAnimation();
+            
             // Clear existing layers and sources
-            if (map.getLayer('pulsing-dots-layer')) map.removeLayer('pulsing-dots-layer');
-            if (map.getSource('pulsing-dots')) map.removeSource('pulsing-dots');
+            if (map.getLayer('base-dot')) map.removeLayer('base-dot');
+            if (map.getLayer('pulsing-circle')) map.removeLayer('pulsing-circle');
+            if (map.getSource('dot-point')) map.removeSource('dot-point');
             
             // Remove CSS overlay if it exists
             const overlay = document.getElementById('pulsing-overlay');
             if (overlay) overlay.remove();
             
-            // Recreate with image-based layers
+            // Recreate with data-driven layers
             setupPulsingDots();
             
-            document.getElementById('btn-prerendered').textContent = 'PreRendered Mode (Active)';
+            document.getElementById('btn-prerendered').textContent = 'Data-Driven Mode (Active)';
             document.getElementById('btn-lowframe').textContent = 'Switch to Low Frame Mode';
             document.getElementById('btn-css').textContent = 'Switch to CSS Overlay Mode';
         }
 
-        // Switch to low frame rate mode
+        // Switch to low frame rate mode (using markers)
         function switchToLowFrameMode() {
-            // Clear existing markers
-            Object.values(markers).flat().forEach(marker => marker.remove());
-            markers.red = [];
-            markers.green = [];
-            markers.grey = [];
+            // Stop any existing animation
+            stopPulseAnimation();
+            
+            // Clear existing layers and sources
+            if (map.getLayer('base-dot')) map.removeLayer('base-dot');
+            if (map.getLayer('pulsing-circle')) map.removeLayer('pulsing-circle');
+            if (map.getSource('dot-point')) map.removeSource('dot-point');
             
             // Remove CSS overlay if it exists
             const overlay = document.getElementById('pulsing-overlay');
@@ -774,12 +862,20 @@
             markers.grey = [greyMarker];
             
             document.getElementById('btn-lowframe').textContent = 'Low Frame Mode (Active)';
-            document.getElementById('btn-prerendered').textContent = 'Switch to PreRendered Mode';
+            document.getElementById('btn-prerendered').textContent = 'Switch to Data-Driven Mode';
             document.getElementById('btn-css').textContent = 'Switch to CSS Overlay Mode';
         }
 
         // Switch to CSS overlay mode (most efficient)
         function switchToCSSMode() {
+            // Stop any existing animation
+            stopPulseAnimation();
+            
+            // Clear existing layers and sources
+            if (map.getLayer('base-dot')) map.removeLayer('base-dot');
+            if (map.getLayer('pulsing-circle')) map.removeLayer('pulsing-circle');
+            if (map.getSource('dot-point')) map.removeSource('dot-point');
+            
             // Clear existing markers
             Object.values(markers).flat().forEach(marker => marker.remove());
             markers.red = [];
@@ -789,60 +885,15 @@
             // Create CSS overlay
             createCSSPulsingOverlay();
             
-            document.getElementById('btn-css').textContent = 'CSS Overlay Mode Active';
-            document.getElementById('btn-efficient').textContent = 'Switch to Efficient Mode';
+            document.getElementById('btn-css').textContent = 'CSS Overlay Mode (Active)';
+            document.getElementById('btn-prerendered').textContent = 'Switch to Data-Driven Mode';
+            document.getElementById('btn-lowframe').textContent = 'Switch to Low Frame Mode';
         }
 
         // Legacy marker functions (kept for compatibility but not used in layer-based approach)
         // These are now replaced by the addLayer implementation above
 
-        // Toggle map layer visibility
-        function toggleMapMarkers(color) {
-            const button = document.getElementById(`btn-map-${color}`);
-            const layer = map.getLayer('pulsing-dots-layer');
-            
-            if (!layer) return;
-            
-            const isVisible = map.getLayoutProperty('pulsing-dots-layer', 'visibility') !== 'none';
-            
-            // Toggle visibility
-            const visibility = isVisible ? 'none' : 'visible';
-            map.setLayoutProperty('pulsing-dots-layer', 'visibility', visibility);
-            
-            button.textContent = isVisible ? `Show ${color.charAt(0).toUpperCase() + color.slice(1)} Markers` : `Hide ${color.charAt(0).toUpperCase() + color.slice(1)} Markers`;
-            button.classList.toggle('active', !isVisible);
-        }
-
-        // Add a random marker to the layer
-        function addRandomMarker() {
-            const colors = ['red', 'green', 'grey'];
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            
-            // Random coordinates around the current map center
-            const center = map.getCenter();
-            const lng = center.lng + (Math.random() - 0.5) * 0.1;
-            const lat = center.lat + (Math.random() - 0.5) * 0.1;
-            
-            // Get current source data
-            const source = map.getSource('pulsing-dots');
-            const currentData = source._data;
-            
-            // Add new feature
-            const newFeature = {
-                type: 'Feature',
-                properties: { 
-                    id: `${color}-dot-${Date.now()}`,
-                    color: color
-                },
-                geometry: {
-                    type: 'Point',
-                    coordinates: [lng, lat]
-                }
-            };
-            
-            currentData.features.push(newFeature);
-            source.setData(currentData);
-        }
+        // Removed toggle and add marker functions - not needed for demo
 
         // Original toggle animation function
         function toggleAnimation(color) {
