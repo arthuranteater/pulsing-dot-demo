@@ -617,6 +617,7 @@
                             v_pulse = sin(t * 3.14159);
                             
                             gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
+                            gl_PointSize = 40.0; // Make dots visible
                         }
                     `;
                     
@@ -632,17 +633,18 @@
                         varying float v_pulse;
                         
                         void main() {
-                            vec2 center = gl_FragCoord.xy;
-                            vec2 pos = gl_FragCoord.xy;
+                            // Get the center of the point (assuming point size)
+                            vec2 center = vec2(0.5, 0.5);
+                            vec2 pos = gl_PointCoord;
                             
                             // Calculate distance from center
                             float dist = distance(pos, center);
                             
                             // Base dot radius
-                            float baseRadius = 8.0;
+                            float baseRadius = 0.3;
                             
                             // Pulsing ring
-                            float pulseRadius = baseRadius + (v_pulse * 20.0);
+                            float pulseRadius = baseRadius + (v_pulse * 0.4);
                             float pulseOpacity = (1.0 - v_pulse) * 0.6;
                             
                             // Color based on v_color
@@ -704,6 +706,9 @@
                     gl.uniform1f(this.u_time, performance.now() / 1000.0);
                     gl.uniform1f(this.u_zoom, map.getZoom());
                     
+                    // Set point size
+                    gl.enable(gl.PROGRAM_POINT_SIZE);
+                    
                     // Get source data
                     const source = map.getSource('dot-point');
                     const data = source._data;
@@ -734,13 +739,32 @@
                             ids.push(id);
                         });
                         
+                        // Create interleaved buffer
+                        const bufferData = [];
+                        for (let i = 0; i < positions.length / 2; i++) {
+                            bufferData.push(
+                                positions[i * 2],     // x
+                                positions[i * 2 + 1],  // y
+                                colors[i],            // color
+                                ids[i]                // id
+                            );
+                        }
+                        
                         // Upload data to GPU
                         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-                        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+                        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bufferData), gl.STATIC_DRAW);
                         
-                        // Set up attributes
+                        // Set up attributes with stride
+                        const stride = 4 * 4; // 4 floats * 4 bytes
+                        
                         gl.enableVertexAttribArray(this.a_pos);
-                        gl.vertexAttribPointer(this.a_pos, 2, gl.FLOAT, false, 0, 0);
+                        gl.vertexAttribPointer(this.a_pos, 2, gl.FLOAT, false, stride, 0);
+                        
+                        gl.enableVertexAttribArray(this.a_color);
+                        gl.vertexAttribPointer(this.a_color, 1, gl.FLOAT, false, stride, 8);
+                        
+                        gl.enableVertexAttribArray(this.a_id);
+                        gl.vertexAttribPointer(this.a_id, 1, gl.FLOAT, false, stride, 12);
                         
                         // Draw points
                         gl.drawArrays(gl.POINTS, 0, positions.length / 2);
