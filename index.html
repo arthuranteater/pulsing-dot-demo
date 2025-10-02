@@ -468,8 +468,8 @@
                     'circle-radius': {
                         'base': 1.75,
                         'stops': [
-                            [1, ['*', ['get', 'baseRadius'], 0.33]], // Start at 33% size
-                            [20, ['*', ['get', 'baseRadius'], 1.0]]   // Scale to 100% size
+                            [1, 20], // Start with visible size
+                            [20, 30]
                         ]
                     },
                     'circle-color': [
@@ -510,8 +510,12 @@
                 }
             });
 
-            // Use a more efficient animation approach
-            startEfficientPulsingAnimation();
+            // Start with simple static dots first, then add animation
+            setTimeout(() => {
+                console.log('Layers created, starting animation...');
+                console.log('Available layers:', map.getStyle().layers.map(l => l.id));
+                startEfficientPulsingAnimation();
+            }, 100);
         }
 
         // More efficient animation using CSS-like approach with reduced updates
@@ -522,6 +526,14 @@
 
         // Start efficient pulsing animation
         function startEfficientPulsingAnimation() {
+            console.log('Starting pulsing animation...');
+            
+            // Ensure layers exist
+            if (!map.getLayer('pulsing-rings')) {
+                console.error('pulsing-rings layer not found!');
+                return;
+            }
+            
             function animate() {
                 const now = Date.now();
                 if (now - lastUpdate < updateInterval) {
@@ -538,16 +550,20 @@
                 const scale = 0.33 + (0.67 * t);
                 const opacity = 1 - t;
                 
-                // Update the pulsing rings layer (reduced frequency)
-                map.setPaintProperty('pulsing-rings', 'circle-radius', {
-                    'base': 1.75,
-                    'stops': [
-                        [1, 20 * scale],
-                        [20, 30 * scale]
-                    ]
-                });
-                
-                map.setPaintProperty('pulsing-rings', 'circle-opacity', opacity);
+                try {
+                    // Update the pulsing rings layer (reduced frequency)
+                    map.setPaintProperty('pulsing-rings', 'circle-radius', {
+                        'base': 1.75,
+                        'stops': [
+                            [1, 20 * scale],
+                            [20, 30 * scale]
+                        ]
+                    });
+                    
+                    map.setPaintProperty('pulsing-rings', 'circle-opacity', opacity);
+                } catch (error) {
+                    console.error('Error updating paint properties:', error);
+                }
                 
                 animationId = requestAnimationFrame(animate);
             }
@@ -789,7 +805,37 @@
             
             // Test animation after a short delay
             setTimeout(testAnimation, 1000);
+            
+            // Add a fallback to ensure dots are visible
+            setTimeout(() => {
+                if (!map.getLayer('pulsing-rings')) {
+                    console.log('Creating fallback static dots...');
+                    createFallbackDots();
+                }
+            }, 2000);
         });
+
+        // Fallback function to create simple static dots
+        function createFallbackDots() {
+            const dots = [
+                { color: '#db3713', lng: -74.5, lat: 40 },
+                { color: '#54c774', lng: -74.3, lat: 40.1 },
+                { color: '#374053', lng: -74.7, lat: 39.9 }
+            ];
+            
+            dots.forEach(dot => {
+                const el = document.createElement('div');
+                el.style.width = '20px';
+                el.style.height = '20px';
+                el.style.backgroundColor = dot.color;
+                el.style.borderRadius = '50%';
+                el.style.border = '2px solid #edf0f0';
+                
+                new mapboxgl.Marker(el)
+                    .setLngLat([dot.lng, dot.lat])
+                    .addTo(map);
+            });
+        }
     </script>
 </body>
 </html>
