@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGL Custom Layer Pulsing Dots Demo</title>
+    <title>Simple Pulsing Dots Demo</title>
     <!-- Mapbox GL JS -->
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
@@ -16,375 +16,94 @@
             color: white;
         }
 
-        .demo-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 40px;
-            padding: 20px;
-        }
-
-        .demo-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .map-section {
-            width: 100%;
+        .container {
             max-width: 1000px;
+            margin: 0 auto;
         }
 
-        .map-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
+        h1 {
             text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 8px;
         }
 
         .description {
-            max-width: 800px;
-            margin: 0 auto;
+            background: #f8f9fa;
+            color: #333;
             padding: 20px;
-            background-color: #f8f9fa;
             border-radius: 8px;
-            text-align: left;
-            color: #333;
-        }
-
-        .description h2 {
-            color: #333;
-            margin-bottom: 15px;
-        }
-
-        .description h3 {
-            color: #333;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-
-        .description ul {
-            margin: 10px 0;
-        }
-
-        .description li {
-            margin: 5px 0;
-            line-height: 1.4;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="demo-container">
-        <h1>WebGL Custom Layer Pulsing Dots Demo</h1>
+    <div class="container">
+        <h1>Simple Pulsing Dots Demo</h1>
         
-        <div class="demo-section">
-            <h2>How It Works</h2>
-            <div class="description">
-                <p>This demo uses <strong>Mapbox native circle layers</strong> with data-driven styling to create pulsing dots that work reliably across all browsers and WebGL configurations. Here's what makes it special:</p>
-                <ul>
-                    <li><strong>Universal Compatibility</strong>: Works with both hardware and software WebGL</li>
-                    <li><strong>Native Mapbox Rendering</strong>: Uses Mapbox's optimized rendering engine</li>
-                    <li><strong>Data-Driven Animation</strong>: Animation controlled by updating GeoJSON data properties</li>
-                    <li><strong>60fps Performance</strong>: Smooth animation using requestAnimationFrame</li>
-                    <li><strong>Scalable</strong>: Can handle thousands of dots efficiently</li>
-                    <li><strong>Reliable</strong>: No WebGL shader compilation issues</li>
-                </ul>
-                <p><strong>Technical Details:</strong> The animation uses a sine wave function to calculate the pulse timing, then updates the GeoJSON source data with the current animation state. Mapbox's native circle layers render the base dots and pulsing rings with interpolated radius and opacity based on the animation progress.</p>
-            </div>
+        <div class="description">
+            <h3>How It Works</h3>
+            <p>This demo uses simple Mapbox circle layers with CSS-style pulsing animation. The dots pulse using a sine wave function and update every frame using requestAnimationFrame.</p>
         </div>
 
-        <div class="map-section">
-            <div class="map-title">Pulsing Dots on Mapbox Map</div>
-            <div class="map-container">
-                <div id="map"></div>
-            </div>
-            <!-- Native Mapbox pulsing dots - compatible with software WebGL -->
-        </div>
-
+        <div id="map"></div>
     </div>
 
     <script>
-        // Global variables
-        let map;
+        // Set your Mapbox access token
+        mapboxgl.accessToken = 'pk.eyJ1IjoiaHVudGFwcGxlZ2F0ZSIsImEiOiJjbWc5bjA5bmgwYWY0MmtvdW12eWo5cjZzIn0.bFFqd6EHoa2F-CPvvKz8WQ';
+        
+        // Initialize map
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            center: [-74.5, 40],
+            zoom: 9
+        });
+
+        // Animation variables
         let animationId;
         let startTime = performance.now();
         const duration = 2000; // 2 seconds
 
-        // Initialize Mapbox map
-        function initMap() {
-            // You'll need to replace 'YOUR_MAPBOX_ACCESS_TOKEN' with your actual Mapbox access token
-            mapboxgl.accessToken = 'pk.eyJ1IjoiaHVudGFwcGxlZ2F0ZSIsImEiOiJjbWc5bjA5bmgwYWY0MmtvdW12eWo5cjZzIn0.bFFqd6EHoa2F-CPvvKz8WQ'; // Replace with your token
+        // Wait for map to load
+        map.on('load', function() {
+            console.log('Map loaded, adding pulsing dots...');
             
-            map = new mapboxgl.Map({
-                container: 'map',
-                style: 'mapbox://styles/mapbox/dark-v11', // Dark theme to match the demo
-                center: [-74.5, 40], // New York area
-                zoom: 9
-            });
-
-            // Wait for map to load before adding layers
-            map.on('load', function() {
-                setupPulsingDots();
-            });
-        }
-
-        // Setup pulsing dots - use native layers for reliability
-        function setupPulsingDots() {
-            console.log('Setting up pulsing dots with native layers...');
-            
-            // Add source for pulsing dots
-            map.addSource('dot-point', {
+            // Add source
+            map.addSource('pulsing-dots', {
                 type: 'geojson',
                 data: {
                     type: 'FeatureCollection',
                     features: [
                         {
                             type: 'Feature',
-                            properties: {
-                                color: 'red',
-                                id: 0,
-                                pulse_scale: 0
-                            },
-                            geometry: {
-                                type: 'Point',
-                                coordinates: [-74.5, 40]
-                            }
+                            properties: { color: 'red', id: 1 },
+                            geometry: { type: 'Point', coordinates: [-74.5, 40] }
                         },
                         {
                             type: 'Feature',
-                            properties: {
-                                color: 'green',
-                                id: 1,
-                                pulse_scale: 0
-                            },
-                            geometry: {
-                                type: 'Point',
-                                coordinates: [-74.3, 40.1]
-                            }
+                            properties: { color: 'green', id: 2 },
+                            geometry: { type: 'Point', coordinates: [-74.3, 40.1] }
                         },
                         {
                             type: 'Feature',
-                            properties: {
-                                color: 'grey',
-                                id: 2,
-                                pulse_scale: 0
-                            },
-                            geometry: {
-                                type: 'Point',
-                                coordinates: [-74.7, 39.9]
-                            }
+                            properties: { color: 'grey', id: 3 },
+                            geometry: { type: 'Point', coordinates: [-74.7, 39.9] }
                         }
                     ]
                 }
             });
 
-            // Use native layers for reliability
-            setupNativeLayers();
-        }
-
-        // Custom WebGL Layer (most efficient when hardware WebGL is available)
-        function setupCustomWebGLLayer() {
-            map.addLayer({
-                id: 'pulsing-webgl',
-                type: 'custom',
-                source: 'dot-point',
-                onAdd: function(map, gl) {
-                    // Check WebGL capabilities
-                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                    if (debugInfo) {
-                        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                        console.log('WebGL Renderer:', renderer);
-                    }
-
-                    // Vertex shader
-                    const vertexShader = `
-                        attribute vec2 a_pos;
-                        attribute float a_color;
-                        attribute float a_id;
-                        
-                        uniform mat4 u_matrix;
-                        uniform float u_time;
-                        
-                        varying float v_color;
-                        varying float v_id;
-                        varying float v_pulse;
-                        
-                        void main() {
-                            v_color = a_color;
-                            v_id = a_id;
-                            
-                            // Calculate pulse animation
-                            float t = mod(u_time * 0.5, 1.0);
-                            v_pulse = sin(t * 3.14159);
-                            
-                            gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
-                            gl_PointSize = 30.0;
-                        }
-                    `;
-                    
-                    // Fragment shader
-                    const fragmentShader = `
-                        precision mediump float;
-                        
-                        uniform float u_time;
-                        
-                        varying float v_color;
-                        varying float v_id;
-                        varying float v_pulse;
-                        
-                        void main() {
-                            vec2 center = vec2(0.5, 0.5);
-                            vec2 pos = gl_PointCoord;
-                            
-                            float dist = distance(pos, center);
-                            float baseRadius = 0.3;
-                            float pulseRadius = baseRadius + (v_pulse * 0.4);
-                            float pulseOpacity = (1.0 - v_pulse) * 0.6;
-                            
-                            vec3 color;
-                            if (v_color < 0.5) {
-                                color = vec3(0.85, 0.22, 0.08); // Red
-                            } else if (v_color < 1.5) {
-                                color = vec3(0.33, 0.78, 0.45); // Green
-                            } else {
-                                color = vec3(0.22, 0.25, 0.33); // Grey
-                            }
-                            
-                            if (dist < baseRadius) {
-                                gl_FragColor = vec4(color, 1.0);
-                            } else if (dist < pulseRadius) {
-                                float ringOpacity = pulseOpacity * (1.0 - (dist - baseRadius) / (pulseRadius - baseRadius));
-                                gl_FragColor = vec4(color, ringOpacity);
-                            } else {
-                                discard;
-                            }
-                        }
-                    `;
-                    
-                    // Create shader program
-                    const vertexShaderObj = gl.createShader(gl.VERTEX_SHADER);
-                    gl.shaderSource(vertexShaderObj, vertexShader);
-                    gl.compileShader(vertexShaderObj);
-
-                    if (!gl.getShaderParameter(vertexShaderObj, gl.COMPILE_STATUS)) {
-                        throw new Error('Vertex shader compilation failed: ' + gl.getShaderInfoLog(vertexShaderObj));
-                    }
-
-                    const fragmentShaderObj = gl.createShader(gl.FRAGMENT_SHADER);
-                    gl.shaderSource(fragmentShaderObj, fragmentShader);
-                    gl.compileShader(fragmentShaderObj);
-
-                    if (!gl.getShaderParameter(fragmentShaderObj, gl.COMPILE_STATUS)) {
-                        throw new Error('Fragment shader compilation failed: ' + gl.getShaderInfoLog(fragmentShaderObj));
-                    }
-
-                    this.program = gl.createProgram();
-                    gl.attachShader(this.program, vertexShaderObj);
-                    gl.attachShader(this.program, fragmentShaderObj);
-                    gl.linkProgram(this.program);
-
-                    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-                        throw new Error('Program linking failed: ' + gl.getProgramInfoLog(this.program));
-                    }
-                    
-                    // Get attribute and uniform locations
-                    this.a_pos = gl.getAttribLocation(this.program, 'a_pos');
-                    this.a_color = gl.getAttribLocation(this.program, 'a_color');
-                    this.a_id = gl.getAttribLocation(this.program, 'a_id');
-                    this.u_matrix = gl.getUniformLocation(this.program, 'u_matrix');
-                    this.u_time = gl.getUniformLocation(this.program, 'u_time');
-                    
-                    this.buffer = gl.createBuffer();
-                },
-                
-                render: function(gl, matrix) {
-                    gl.useProgram(this.program);
-                    
-                    gl.uniformMatrix4fv(this.u_matrix, false, matrix);
-                    gl.uniform1f(this.u_time, performance.now() / 1000.0);
-                    
-                    const source = map.getSource('dot-point');
-                    const data = source._data;
-                    
-                    if (data && data.features) {
-                        const positions = [];
-                        const colors = [];
-                        const ids = [];
-                        
-                        data.features.forEach(feature => {
-                            const coords = feature.geometry.coordinates;
-                            const color = feature.properties.color;
-                            const id = feature.properties.id;
-                            
-                            const point = map.project([coords[0], coords[1]]);
-                            positions.push(point.x, point.y);
-                            
-                            let colorValue;
-                            if (color === 'red') colorValue = 0.0;
-                            else if (color === 'green') colorValue = 1.0;
-                            else colorValue = 2.0;
-                            
-                            colors.push(colorValue);
-                            ids.push(id);
-                        });
-                        
-                        const bufferData = [];
-                        for (let i = 0; i < positions.length / 2; i++) {
-                            bufferData.push(
-                                positions[i * 2],
-                                positions[i * 2 + 1],
-                                colors[i],
-                                ids[i]
-                            );
-                        }
-                        
-                        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-                        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bufferData), gl.STATIC_DRAW);
-                        
-                        const stride = 4 * 4;
-                        gl.enableVertexAttribArray(this.a_pos);
-                        gl.vertexAttribPointer(this.a_pos, 2, gl.FLOAT, false, stride, 0);
-                        gl.enableVertexAttribArray(this.a_color);
-                        gl.vertexAttribPointer(this.a_color, 1, gl.FLOAT, false, stride, 8);
-                        gl.enableVertexAttribArray(this.a_id);
-                        gl.vertexAttribPointer(this.a_id, 1, gl.FLOAT, false, stride, 12);
-                        
-                        gl.drawArrays(gl.POINTS, 0, positions.length / 2);
-                    }
-                }
-            });
-        }
-
-        // Native Mapbox layers (fallback for software WebGL)
-        function setupNativeLayers() {
-            // Update source with pulse_scale property
-            map.getSource('dot-point').setData({
-                type: 'FeatureCollection',
-                features: [
-                    {
-                        type: 'Feature',
-                        properties: { color: 'red', id: 0, pulse_scale: 0 },
-                        geometry: { type: 'Point', coordinates: [-74.5, 40] }
-                    },
-                    {
-                        type: 'Feature',
-                        properties: { color: 'green', id: 1, pulse_scale: 0 },
-                        geometry: { type: 'Point', coordinates: [-74.3, 40.1] }
-                    },
-                    {
-                        type: 'Feature',
-                        properties: { color: 'grey', id: 2, pulse_scale: 0 },
-                        geometry: { type: 'Point', coordinates: [-74.7, 39.9] }
-                    }
-                ]
-            });
-
             // Add base dot layer
             map.addLayer({
-                id: 'base-dot',
+                id: 'base-dots',
                 type: 'circle',
-                source: 'dot-point',
+                source: 'pulsing-dots',
                 paint: {
                     'circle-radius': 8,
                     'circle-color': [
@@ -400,9 +119,9 @@
 
             // Add pulsing ring layer
             map.addLayer({
-                id: 'pulsing-ring',
+                id: 'pulsing-rings',
                 type: 'circle',
-                source: 'dot-point',
+                source: 'pulsing-dots',
                 paint: {
                     'circle-radius': [
                         'interpolate',
@@ -427,50 +146,42 @@
                 }
             });
 
-            // Start animation for native layers
-            startPulseAnimation();
-            console.log('Native Mapbox layers created');
-        }
+            // Start animation
+            startAnimation();
+        });
 
-        // Animation function for native layers
-        function startPulseAnimation() {
-            function animatePulse(timestamp) {
+        function startAnimation() {
+            function animate(timestamp) {
                 const elapsed = (timestamp - startTime) % duration;
                 const t = elapsed / duration;
                 
-                // Update the source data to trigger animation
-                map.getSource('dot-point').setData({
+                // Update source data
+                map.getSource('pulsing-dots').setData({
                     type: 'FeatureCollection',
                     features: [
                         {
                             type: 'Feature',
-                            properties: { color: 'red', id: 0, pulse_scale: t },
+                            properties: { color: 'red', id: 1, pulse_scale: t },
                             geometry: { type: 'Point', coordinates: [-74.5, 40] }
                         },
                         {
                             type: 'Feature',
-                            properties: { color: 'green', id: 1, pulse_scale: t },
+                            properties: { color: 'green', id: 2, pulse_scale: t },
                             geometry: { type: 'Point', coordinates: [-74.3, 40.1] }
                         },
                         {
                             type: 'Feature',
-                            properties: { color: 'grey', id: 2, pulse_scale: t },
+                            properties: { color: 'grey', id: 3, pulse_scale: t },
                             geometry: { type: 'Point', coordinates: [-74.7, 39.9] }
                         }
                     ]
                 });
                 
-                animationId = requestAnimationFrame(animatePulse);
+                animationId = requestAnimationFrame(animate);
             }
             
-            animationId = requestAnimationFrame(animatePulse);
+            animationId = requestAnimationFrame(animate);
         }
-
-        // Initialize everything when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize map with native Mapbox pulsing dots
-            initMap();
-        });
     </script>
 </body>
 </html>
