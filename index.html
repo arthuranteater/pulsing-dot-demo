@@ -321,6 +321,8 @@
                 <button onclick="toggleMapMarkers('green')" id="btn-map-green">Toggle Green Markers</button>
                 <button onclick="toggleMapMarkers('grey')" id="btn-map-grey">Toggle Grey Markers</button>
                 <button onclick="addRandomMarker()" id="btn-add-marker">Add Random Marker</button>
+                <button onclick="switchToEfficientMode()" id="btn-efficient">Switch to Efficient Mode</button>
+                <button onclick="switchToCSSMode()" id="btn-css">Switch to CSS Overlay Mode</button>
             </div>
         </div>
 
@@ -397,9 +399,9 @@
             });
         }
 
-        // Setup pulsing dots using addLayer
+        // Setup pulsing dots using efficient data-driven approach
         function setupPulsingDots() {
-            // Create GeoJSON data for pulsing dots
+            // Create GeoJSON data with animation properties
             const pulsingDotsData = {
                 type: 'FeatureCollection',
                 features: [
@@ -408,7 +410,10 @@
                         properties: { 
                             id: 'red-dot',
                             color: 'red',
-                            type: 'pulsing-dot'
+                            type: 'pulsing-dot',
+                            animationOffset: 0, // Start time offset
+                            baseRadius: 20,
+                            innerRadius: 8
                         },
                         geometry: {
                             type: 'Point',
@@ -420,7 +425,10 @@
                         properties: { 
                             id: 'green-dot',
                             color: 'green',
-                            type: 'pulsing-dot'
+                            type: 'pulsing-dot',
+                            animationOffset: 0.33, // Offset for staggered animation
+                            baseRadius: 20,
+                            innerRadius: 8
                         },
                         geometry: {
                             type: 'Point',
@@ -432,7 +440,10 @@
                         properties: { 
                             id: 'grey-dot',
                             color: 'grey',
-                            type: 'pulsing-dot'
+                            type: 'pulsing-dot',
+                            animationOffset: 0.66, // Offset for staggered animation
+                            baseRadius: 20,
+                            innerRadius: 8
                         },
                         geometry: {
                             type: 'Point',
@@ -448,7 +459,7 @@
                 data: pulsingDotsData
             });
 
-            // Add pulsing ring layer
+            // Add pulsing ring layer with time-based expressions
             map.addLayer({
                 id: 'pulsing-rings',
                 type: 'circle',
@@ -457,8 +468,8 @@
                     'circle-radius': {
                         'base': 1.75,
                         'stops': [
-                            [1, 20],
-                            [20, 30]
+                            [1, ['*', ['get', 'baseRadius'], 0.33]], // Start at 33% size
+                            [20, ['*', ['get', 'baseRadius'], 1.0]]   // Scale to 100% size
                         ]
                     },
                     'circle-color': [
@@ -473,7 +484,7 @@
                 }
             });
 
-            // Add inner dot layer
+            // Add inner dot layer (static)
             map.addLayer({
                 id: 'pulsing-dots-inner',
                 type: 'circle',
@@ -482,8 +493,8 @@
                     'circle-radius': {
                         'base': 1.75,
                         'stops': [
-                            [1, 8],
-                            [20, 12]
+                            [1, ['get', 'innerRadius']],
+                            [20, ['*', ['get', 'innerRadius'], 1.5]]
                         ]
                     },
                     'circle-color': [
@@ -499,18 +510,27 @@
                 }
             });
 
-            // Start pulsing animation
-            startPulsingAnimation();
+            // Use a more efficient animation approach
+            startEfficientPulsingAnimation();
         }
 
-        // Animation variables
+        // More efficient animation using CSS-like approach with reduced updates
         let animationId;
         let startTime = Date.now();
+        let lastUpdate = 0;
+        const updateInterval = 100; // Update every 100ms instead of every frame (60fps -> 10fps)
 
-        // Start the pulsing animation
-        function startPulsingAnimation() {
+        // Start efficient pulsing animation
+        function startEfficientPulsingAnimation() {
             function animate() {
-                const elapsed = Date.now() - startTime;
+                const now = Date.now();
+                if (now - lastUpdate < updateInterval) {
+                    animationId = requestAnimationFrame(animate);
+                    return; // Skip this frame
+                }
+                lastUpdate = now;
+                
+                const elapsed = now - startTime;
                 const duration = 2000; // 2 seconds
                 const t = (elapsed % duration) / duration;
                 
@@ -518,7 +538,7 @@
                 const scale = 0.33 + (0.67 * t);
                 const opacity = 1 - t;
                 
-                // Update the pulsing rings layer
+                // Update the pulsing rings layer (reduced frequency)
                 map.setPaintProperty('pulsing-rings', 'circle-radius', {
                     'base': 1.75,
                     'stops': [
@@ -535,12 +555,132 @@
             animate();
         }
 
+        // Alternative: Use CSS animations on a single overlay layer (most efficient)
+        function createCSSPulsingOverlay() {
+            // Remove existing layers
+            if (map.getLayer('pulsing-rings')) map.removeLayer('pulsing-rings');
+            if (map.getLayer('pulsing-dots-inner')) map.removeLayer('pulsing-dots-inner');
+            
+            // Create a single overlay with CSS animations
+            const overlay = document.createElement('div');
+            overlay.id = 'pulsing-overlay';
+            overlay.style.position = 'absolute';
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = '1000';
+            
+            // Add CSS for pulsing animation
+            const style = document.createElement('style');
+            style.textContent = `
+                .pulsing-overlay-dot {
+                    position: absolute;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    transform: translate(-50%, -50%);
+                    pointer-events: none;
+                }
+                .pulsing-overlay-dot::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    border-radius: 50%;
+                    animation: pulse-overlay 2s infinite;
+                }
+                @keyframes pulse-overlay {
+                    0% { transform: scale(0.33); opacity: 1; }
+                    80%, 100% { transform: scale(1); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Add dots to overlay
+            const dots = [
+                { color: '#db3713', lng: -74.5, lat: 40 },
+                { color: '#54c774', lng: -74.3, lat: 40.1 },
+                { color: '#374053', lng: -74.7, lat: 39.9 }
+            ];
+            
+            dots.forEach(dot => {
+                const dotEl = document.createElement('div');
+                dotEl.className = 'pulsing-overlay-dot';
+                dotEl.style.backgroundColor = dot.color;
+                dotEl.style.border = '2px solid #edf0f0';
+                overlay.appendChild(dotEl);
+                
+                // Position using map projection
+                const pos = map.project([dot.lng, dot.lat]);
+                dotEl.style.left = pos.x + 'px';
+                dotEl.style.top = pos.y + 'px';
+            });
+            
+            // Add overlay to map container
+            map.getContainer().appendChild(overlay);
+            
+            // Update positions on map move
+            map.on('move', updateOverlayPositions);
+            map.on('zoom', updateOverlayPositions);
+        }
+        
+        function updateOverlayPositions() {
+            const overlay = document.getElementById('pulsing-overlay');
+            if (!overlay) return;
+            
+            const dots = [
+                { lng: -74.5, lat: 40 },
+                { lng: -74.3, lat: 40.1 },
+                { lng: -74.7, lat: 39.9 }
+            ];
+            
+            const dotElements = overlay.querySelectorAll('.pulsing-overlay-dot');
+            dots.forEach((dot, index) => {
+                if (dotElements[index]) {
+                    const pos = map.project([dot.lng, dot.lat]);
+                    dotElements[index].style.left = pos.x + 'px';
+                    dotElements[index].style.top = pos.y + 'px';
+                }
+            });
+        }
+
         // Stop the pulsing animation
         function stopPulsingAnimation() {
             if (animationId) {
                 cancelAnimationFrame(animationId);
                 animationId = null;
             }
+        }
+
+        // Switch to efficient mode (reduced update frequency)
+        function switchToEfficientMode() {
+            stopPulsingAnimation();
+            
+            // Remove CSS overlay if it exists
+            const overlay = document.getElementById('pulsing-overlay');
+            if (overlay) overlay.remove();
+            
+            // Recreate layers with efficient animation
+            setupPulsingDots();
+            
+            document.getElementById('btn-efficient').textContent = 'Efficient Mode Active';
+            document.getElementById('btn-css').textContent = 'Switch to CSS Overlay Mode';
+        }
+
+        // Switch to CSS overlay mode (most efficient)
+        function switchToCSSMode() {
+            stopPulsingAnimation();
+            
+            // Remove existing layers
+            if (map.getLayer('pulsing-rings')) map.removeLayer('pulsing-rings');
+            if (map.getLayer('pulsing-dots-inner')) map.removeLayer('pulsing-dots-inner');
+            if (map.getSource('pulsing-dots')) map.removeSource('pulsing-dots');
+            
+            // Create CSS overlay
+            createCSSPulsingOverlay();
+            
+            document.getElementById('btn-css').textContent = 'CSS Overlay Mode Active';
+            document.getElementById('btn-efficient').textContent = 'Switch to Efficient Mode';
         }
 
         // Legacy marker functions (kept for compatibility but not used in layer-based approach)
