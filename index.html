@@ -331,7 +331,9 @@
         </div>
 
         <div class="info">
-            <h3>CSS Implementation Benefits:</h3>
+            <h3>Implementation Comparison:</h3>
+            
+            <h4>🎨 CSS Animations (Demo Section):</h4>
             <ul>
                 <li><strong>GPU Accelerated:</strong> CSS animations are handled by the GPU, not the CPU</li>
                 <li><strong>No Canvas Redrawing:</strong> No continuous canvas operations at 60fps</li>
@@ -340,12 +342,30 @@
                 <li><strong>Easy Customization:</strong> Simple CSS properties to modify colors, timing, and effects</li>
             </ul>
             
-            <h3>Key CSS Properties:</h3>
+            <h4>🗺️ Mapbox addLayer (Map Implementation):</h4>
             <ul>
-                <li><code>animation: pulse 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;</code></li>
-                <li><code>transform: scale()</code> for size changes</li>
-                <li><code>opacity</code> for fade effects</li>
-                <li><code>cubic-bezier()</code> for smooth easing</li>
+                <li><strong>Native Integration:</strong> Uses Mapbox's native rendering engine</li>
+                <li><strong>Scalable Performance:</strong> Can handle thousands of pulsing dots efficiently</li>
+                <li><strong>Data-Driven Styling:</strong> Dynamic styling based on GeoJSON properties</li>
+                <li><strong>Zoom Responsive:</strong> Automatically scales with map zoom level</li>
+                <li><strong>Interactive Features:</strong> Easy to add click handlers, popups, and interactions</li>
+                <li><strong>Memory Efficient:</strong> No DOM elements, pure GPU rendering</li>
+            </ul>
+            
+            <h3>Key Implementation Details:</h3>
+            <ul>
+                <li><strong>CSS Method:</strong> <code>animation: pulse 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;</code></li>
+                <li><strong>Mapbox Method:</strong> <code>requestAnimationFrame</code> with <code>setPaintProperty()</code></li>
+                <li><strong>Scale Animation:</strong> <code>transform: scale(0.33)</code> to <code>scale(1.0)</code></li>
+                <li><strong>Opacity Fade:</strong> <code>opacity: 1</code> to <code>opacity: 0</code></li>
+                <li><strong>Duration:</strong> 2 seconds with smooth easing curves</li>
+            </ul>
+            
+            <h3>Performance Benefits:</h3>
+            <ul>
+                <li><strong>CSS Animations:</strong> Best for static demos and UI elements</li>
+                <li><strong>Mapbox Layers:</strong> Best for map-based applications with many markers</li>
+                <li><strong>Hybrid Approach:</strong> Use CSS for demos, Mapbox layers for production maps</li>
             </ul>
         </div>
     </div>
