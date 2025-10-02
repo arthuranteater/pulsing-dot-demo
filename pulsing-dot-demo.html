@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pulsing Dot CSS Demo with Mapbox</title>
+    <!-- Mapbox GL JS -->
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        .demo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            padding: 20px;
+        }
+
+        .demo-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .demo-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .pulse-dot {
+            position: relative;
+            width: 75px;
+            height: 75px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pulse-ring {
+            position: absolute;
+            border-radius: 50%;
+            animation: pulse 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+        }
+
+        .pulse-dot-inner {
+            position: relative;
+            z-index: 2;
+            border-radius: 50%;
+            border: 2px solid;
+        }
+
+        /* Default red dot */
+        .pulse-dot-red .pulse-ring {
+            background: rgba(219, 55, 19, 0.6);
+        }
+
+        .pulse-dot-red .pulse-dot-inner {
+            background: #db3713;
+            border-color: #edf0f0;
+            width: 22px;
+            height: 22px;
+        }
+
+        /* Green dot for carrier vehicle */
+        .pulse-dot-green .pulse-ring {
+            background: rgba(84, 199, 116, 0.6);
+        }
+
+        .pulse-dot-green .pulse-dot-inner {
+            background: #54c774;
+            border-color: #54c774;
+            width: 22px;
+            height: 22px;
+        }
+
+        /* Grey dot */
+        .pulse-dot-grey .pulse-ring {
+            background: rgba(55, 64, 83, 0.6);
+        }
+
+        .pulse-dot-grey .pulse-dot-inner {
+            background: #374053;
+            border-color: #edf0f0;
+            width: 22px;
+            height: 22px;
+        }
+
+        @keyframes pulse {
+            0% { 
+                transform: scale(0.33); 
+                opacity: 1; 
+            }
+            80%, 100% { 
+                transform: scale(1); 
+                opacity: 0; 
+            }
+        }
+
+        /* Alternative animation styles */
+        .pulse-dot-smooth .pulse-ring {
+            animation: pulse-smooth 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-smooth {
+            0% { 
+                transform: scale(0.2); 
+                opacity: 0.8; 
+            }
+            50% { 
+                transform: scale(0.8); 
+                opacity: 0.4; 
+            }
+            100% { 
+                transform: scale(1.2); 
+                opacity: 0; 
+            }
+        }
+
+        .pulse-dot-fast .pulse-ring {
+            animation: pulse-fast 1s ease-out infinite;
+        }
+
+        @keyframes pulse-fast {
+            0% { 
+                transform: scale(0.1); 
+                opacity: 1; 
+            }
+            100% { 
+                transform: scale(1.5); 
+                opacity: 0; 
+            }
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        button.active {
+            background: #54c774;
+        }
+
+        .info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            max-width: 600px;
+        }
+
+        /* Map styles */
+        .map-container {
+            width: 100%;
+            height: 500px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            margin: 20px 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Map marker styles */
+        .map-marker {
+            position: relative;
+            width: 75px;
+            height: 75px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .map-marker .pulse-ring {
+            position: absolute;
+            border-radius: 50%;
+            animation: pulse 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-marker .pulse-dot-inner {
+            position: relative;
+            z-index: 2;
+            border-radius: 50%;
+            border: 2px solid;
+        }
+
+        /* Map marker color variants */
+        .map-marker-red .pulse-ring {
+            background: rgba(219, 55, 19, 0.6);
+        }
+
+        .map-marker-red .pulse-dot-inner {
+            background: #db3713;
+            border-color: #edf0f0;
+            width: 22px;
+            height: 22px;
+        }
+
+        .map-marker-green .pulse-ring {
+            background: rgba(84, 199, 116, 0.6);
+        }
+
+        .map-marker-green .pulse-dot-inner {
+            background: #54c774;
+            border-color: #54c774;
+            width: 22px;
+            height: 22px;
+        }
+
+        .map-marker-grey .pulse-ring {
+            background: rgba(55, 64, 83, 0.6);
+        }
+
+        .map-marker-grey .pulse-dot-inner {
+            background: #374053;
+            border-color: #edf0f0;
+            width: 22px;
+            height: 22px;
+        }
+
+        .map-section {
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .map-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>Pulsing Dot CSS Animation Demo</h1>
+        
+        <div class="demo-section">
+            <div class="demo-title">Default Red Dot</div>
+            <div class="pulse-dot pulse-dot-red">
+                <div class="pulse-ring"></div>
+                <div class="pulse-dot-inner"></div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">Green Dot (Carrier Vehicle)</div>
+            <div class="pulse-dot pulse-dot-green">
+                <div class="pulse-ring"></div>
+                <div class="pulse-dot-inner"></div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">Grey Dot</div>
+            <div class="pulse-dot pulse-dot-grey">
+                <div class="pulse-ring"></div>
+                <div class="pulse-dot-inner"></div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">Animation Variations</div>
+            <div style="display: flex; gap: 40px; flex-wrap: wrap; justify-content: center;">
+                <div>
+                    <div style="text-align: center; margin-bottom: 10px;">Smooth</div>
+                    <div class="pulse-dot pulse-dot-red pulse-dot-smooth">
+                        <div class="pulse-ring"></div>
+                        <div class="pulse-dot-inner"></div>
+                    </div>
+                </div>
+                <div>
+                    <div style="text-align: center; margin-bottom: 10px;">Fast</div>
+                    <div class="pulse-dot pulse-dot-green pulse-dot-fast">
+                        <div class="pulse-ring"></div>
+                        <div class="pulse-dot-inner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-section">
+            <div class="map-title">Pulsing Dots on Mapbox Map</div>
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            <div class="controls">
+                <button onclick="toggleMapMarkers('red')" id="btn-map-red">Toggle Red Markers</button>
+                <button onclick="toggleMapMarkers('green')" id="btn-map-green">Toggle Green Markers</button>
+                <button onclick="toggleMapMarkers('grey')" id="btn-map-grey">Toggle Grey Markers</button>
+                <button onclick="addRandomMarker()" id="btn-add-marker">Add Random Marker</button>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="toggleAnimation('red')" id="btn-red">Toggle Red</button>
+            <button onclick="toggleAnimation('green')" id="btn-green">Toggle Green</button>
+            <button onclick="toggleAnimation('grey')" id="btn-grey">Toggle Grey</button>
+        </div>
+
+        <div class="info">
+            <h3>CSS Implementation Benefits:</h3>
+            <ul>
+                <li><strong>GPU Accelerated:</strong> CSS animations are handled by the GPU, not the CPU</li>
+                <li><strong>No Canvas Redrawing:</strong> No continuous canvas operations at 60fps</li>
+                <li><strong>VM Friendly:</strong> Minimal resource usage, perfect for virtual machines</li>
+                <li><strong>Smooth Performance:</strong> Hardware-accelerated animations</li>
+                <li><strong>Easy Customization:</strong> Simple CSS properties to modify colors, timing, and effects</li>
+            </ul>
+            
+            <h3>Key CSS Properties:</h3>
+            <ul>
+                <li><code>animation: pulse 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;</code></li>
+                <li><code>transform: scale()</code> for size changes</li>
+                <li><code>opacity</code> for fade effects</li>
+                <li><code>cubic-bezier()</code> for smooth easing</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let map;
+        let markers = {
+            red: [],
+            green: [],
+            grey: []
+        };
+
+        // Initialize Mapbox map
+        function initMap() {
+            // You'll need to replace 'YOUR_MAPBOX_ACCESS_TOKEN' with your actual Mapbox access token
+            mapboxgl.accessToken = 'pk.eyJ1IjoiaHVudGFwcGxlZ2F0ZSIsImEiOiJjbWc5bjA5bmgwYWY0MmtvdW12eWo5cjZzIn0.bFFqd6EHoa2F-CPvvKz8WQ'; // Replace with your token
+            
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/dark-v11', // Dark theme to match the demo
+                center: [-74.5, 40], // New York area
+                zoom: 9
+            });
+
+            // Add some initial markers
+            addMarker(-74.5, 40, 'red');
+            addMarker(-74.3, 40.1, 'green');
+            addMarker(-74.7, 39.9, 'grey');
+        }
+
+        // Create a pulsing dot marker
+        function createPulsingDot(color) {
+            const el = document.createElement('div');
+            el.className = `map-marker map-marker-${color}`;
+            
+            // Create the pulse ring
+            const pulseRing = document.createElement('div');
+            pulseRing.className = 'pulse-ring';
+            
+            // Create the inner dot
+            const innerDot = document.createElement('div');
+            innerDot.className = 'pulse-dot-inner';
+            
+            el.appendChild(pulseRing);
+            el.appendChild(innerDot);
+            
+            // Force the animation to start by triggering a reflow
+            el.offsetHeight;
+            
+            return el;
+        }
+
+        // Add a marker to the map
+        function addMarker(lng, lat, color) {
+            const el = createPulsingDot(color);
+            const marker = new mapboxgl.Marker(el)
+                .setLngLat([lng, lat])
+                .addTo(map);
+            
+            markers[color].push(marker);
+            return marker;
+        }
+
+        // Toggle map markers visibility
+        function toggleMapMarkers(color) {
+            const button = document.getElementById(`btn-map-${color}`);
+            const isVisible = markers[color].length > 0 && markers[color][0].getElement().style.display !== 'none';
+            
+            markers[color].forEach(marker => {
+                const el = marker.getElement();
+                if (isVisible) {
+                    el.style.display = 'none';
+                } else {
+                    el.style.display = 'flex';
+                }
+            });
+            
+            button.textContent = isVisible ? `Show ${color.charAt(0).toUpperCase() + color.slice(1)} Markers` : `Hide ${color.charAt(0).toUpperCase() + color.slice(1)} Markers`;
+            button.classList.toggle('active', !isVisible);
+        }
+
+        // Add a random marker
+        function addRandomMarker() {
+            const colors = ['red', 'green', 'grey'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Random coordinates around the current map center
+            const center = map.getCenter();
+            const lng = center.lng + (Math.random() - 0.5) * 0.1;
+            const lat = center.lat + (Math.random() - 0.5) * 0.1;
+            
+            addMarker(lng, lat, color);
+        }
+
+        // Original toggle animation function
+        function toggleAnimation(color) {
+            const dots = document.querySelectorAll(`.pulse-dot-${color}`);
+            const button = document.getElementById(`btn-${color}`);
+            
+            dots.forEach(dot => {
+                const ring = dot.querySelector('.pulse-ring');
+                if (ring.style.animationPlayState === 'paused') {
+                    ring.style.animationPlayState = 'running';
+                    button.textContent = `Pause ${color.charAt(0).toUpperCase() + color.slice(1)}`;
+                    button.classList.add('active');
+                } else {
+                    ring.style.animationPlayState = 'paused';
+                    button.textContent = `Resume ${color.charAt(0).toUpperCase() + color.slice(1)}`;
+                    button.classList.remove('active');
+                }
+            });
+        }
+
+        // Debug function to test animation
+        function testAnimation() {
+            console.log('Testing animation...');
+            const testDiv = document.createElement('div');
+            testDiv.style.position = 'fixed';
+            testDiv.style.top = '10px';
+            testDiv.style.left = '10px';
+            testDiv.style.zIndex = '9999';
+            testDiv.innerHTML = `
+                <div class="pulse-dot pulse-dot-red">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-dot-inner"></div>
+                </div>
+            `;
+            document.body.appendChild(testDiv);
+            
+            setTimeout(() => {
+                document.body.removeChild(testDiv);
+            }, 5000);
+        }
+
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize button text for demo controls
+            document.getElementById('btn-red').textContent = 'Pause Red';
+            document.getElementById('btn-green').textContent = 'Pause Green';
+            document.getElementById('btn-grey').textContent = 'Pause Grey';
+            
+            // Initialize map
+            initMap();
+            
+            // Test animation after a short delay
+            setTimeout(testAnimation, 1000);
+        });
+    </script>
+</body>
+</html>
