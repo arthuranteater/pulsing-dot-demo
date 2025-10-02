@@ -317,7 +317,7 @@
                 <div id="map"></div>
             </div>
             <div class="controls">
-                <button onclick="switchToPreRenderedMode()" id="btn-prerendered">Data-Driven Mode (Active)</button>
+                <button onclick="switchToPreRenderedMode()" id="btn-prerendered">WebGL Mode (Active)</button>
                 <button onclick="switchToLowFrameMode()" id="btn-lowframe">Switch to Low Frame Mode</button>
                 <button onclick="switchToCSSMode()" id="btn-css">Switch to CSS Overlay Mode</button>
             </div>
@@ -545,9 +545,9 @@
             };
         }
 
-        // Setup pulsing dots using data-driven styling
+        // Setup pulsing dots using Custom WebGL Layer
         function setupPulsingDots() {
-            console.log('Setting up data-driven pulsing dots...');
+            console.log('Setting up Custom WebGL pulsing dots...');
             
             // Add source for pulsing dots
             map.addSource('dot-point', {
@@ -559,7 +559,7 @@
                             type: 'Feature',
                             properties: {
                                 color: 'red',
-                                pulse_scale: 0
+                                id: 0
                             },
                             geometry: {
                                 type: 'Point',
@@ -570,7 +570,7 @@
                             type: 'Feature',
                             properties: {
                                 color: 'green',
-                                pulse_scale: 0
+                                id: 1
                             },
                             geometry: {
                                 type: 'Point',
@@ -581,7 +581,7 @@
                             type: 'Feature',
                             properties: {
                                 color: 'grey',
-                                pulse_scale: 0
+                                id: 2
                             },
                             geometry: {
                                 type: 'Point',
@@ -592,124 +592,170 @@
                 }
             });
 
-            // Add the base, non-pulsing dot layer
+            // Add Custom WebGL Layer
             map.addLayer({
-                id: 'base-dot',
-                type: 'circle',
+                id: 'pulsing-webgl',
+                type: 'custom',
                 source: 'dot-point',
-                paint: {
-                    'circle-radius': 8,
-                    'circle-color': [
-                        'case',
-                        ['==', ['get', 'color'], 'red'], '#db3713',
-                        ['==', ['get', 'color'], 'green'], '#54c774',
-                        ['==', ['get', 'color'], 'grey'], '#374053',
-                        '#db3713'
-                    ],
-                    'circle-stroke-color': '#edf0f0',
-                    'circle-stroke-width': 2
-                }
-            });
-
-            // Add the pulsing effect layer
-            map.addLayer({
-                id: 'pulsing-circle',
-                type: 'circle',
-                source: 'dot-point',
-                paint: {
-                    'circle-radius': [
-                        'interpolate',
-                        ['linear'],
-                        ['get', 'pulse_scale'],
-                        0, 8,
-                        1, 30
-                    ],
-                    'circle-color': [
-                        'case',
-                        ['==', ['get', 'color'], 'red'], '#db3713',
-                        ['==', ['get', 'color'], 'green'], '#54c774',
-                        ['==', ['get', 'color'], 'grey'], '#374053',
-                        '#db3713'
-                    ],
-                    'circle-opacity': [
-                        'interpolate',
-                        ['linear'],
-                        ['get', 'pulse_scale'],
-                        0, 0.6,
-                        1, 0
-                    ]
-                }
-            });
-
-            // Start the animation
-            startPulseAnimation();
-            
-            console.log('Data-driven pulsing dots created');
-        }
-
-        // Animation variables
-        let animationId;
-        let startTime = performance.now();
-        const duration = 2000; // 2 seconds
-
-        // Start the pulsing animation
-        function startPulseAnimation() {
-            function animatePulse(timestamp) {
-                const t = ((timestamp - startTime) % duration) / duration;
+                onAdd: function(map, gl) {
+                    // Vertex shader
+                    const vertexShader = `
+                        attribute vec2 a_pos;
+                        attribute float a_color;
+                        attribute float a_id;
+                        
+                        uniform mat4 u_matrix;
+                        uniform float u_time;
+                        uniform float u_zoom;
+                        
+                        varying float v_color;
+                        varying float v_id;
+                        varying float v_pulse;
+                        
+                        void main() {
+                            v_color = a_color;
+                            v_id = a_id;
+                            
+                            // Calculate pulse animation
+                            float t = mod(u_time * 0.5, 1.0);
+                            v_pulse = sin(t * 3.14159);
+                            
+                            gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
+                        }
+                    `;
+                    
+                    // Fragment shader
+                    const fragmentShader = `
+                        precision mediump float;
+                        
+                        uniform float u_time;
+                        uniform float u_zoom;
+                        
+                        varying float v_color;
+                        varying float v_id;
+                        varying float v_pulse;
+                        
+                        void main() {
+                            vec2 center = gl_FragCoord.xy;
+                            vec2 pos = gl_FragCoord.xy;
+                            
+                            // Calculate distance from center
+                            float dist = distance(pos, center);
+                            
+                            // Base dot radius
+                            float baseRadius = 8.0;
+                            
+                            // Pulsing ring
+                            float pulseRadius = baseRadius + (v_pulse * 20.0);
+                            float pulseOpacity = (1.0 - v_pulse) * 0.6;
+                            
+                            // Color based on v_color
+                            vec3 color;
+                            if (v_color < 0.5) {
+                                color = vec3(0.85, 0.22, 0.08); // Red
+                            } else if (v_color < 1.5) {
+                                color = vec3(0.33, 0.78, 0.45); // Green
+                            } else {
+                                color = vec3(0.22, 0.25, 0.33); // Grey
+                            }
+                            
+                            // Draw base dot
+                            if (dist < baseRadius) {
+                                gl_FragColor = vec4(color, 1.0);
+                            }
+                            // Draw pulsing ring
+                            else if (dist < pulseRadius) {
+                                float ringOpacity = pulseOpacity * (1.0 - (dist - baseRadius) / (pulseRadius - baseRadius));
+                                gl_FragColor = vec4(color, ringOpacity);
+                            }
+                            else {
+                                discard;
+                            }
+                        }
+                    `;
+                    
+                    // Create shader program
+                    const vertexShaderObj = gl.createShader(gl.VERTEX_SHADER);
+                    gl.shaderSource(vertexShaderObj, vertexShader);
+                    gl.compileShader(vertexShaderObj);
+                    
+                    const fragmentShaderObj = gl.createShader(gl.FRAGMENT_SHADER);
+                    gl.shaderSource(fragmentShaderObj, fragmentShader);
+                    gl.compileShader(fragmentShaderObj);
+                    
+                    this.program = gl.createProgram();
+                    gl.attachShader(this.program, vertexShaderObj);
+                    gl.attachShader(this.program, fragmentShaderObj);
+                    gl.linkProgram(this.program);
+                    
+                    // Get attribute and uniform locations
+                    this.a_pos = gl.getAttribLocation(this.program, 'a_pos');
+                    this.a_color = gl.getAttribLocation(this.program, 'a_color');
+                    this.a_id = gl.getAttribLocation(this.program, 'a_id');
+                    this.u_matrix = gl.getUniformLocation(this.program, 'u_matrix');
+                    this.u_time = gl.getUniformLocation(this.program, 'u_time');
+                    this.u_zoom = gl.getUniformLocation(this.program, 'u_zoom');
+                    
+                    // Create buffer for positions
+                    this.buffer = gl.createBuffer();
+                },
                 
-                // Update the source's data to trigger the animation
-                map.getSource('dot-point').setData({
-                    type: 'FeatureCollection',
-                    features: [
-                        {
-                            type: 'Feature',
-                            properties: {
-                                color: 'red',
-                                pulse_scale: t
-                            },
-                            geometry: {
-                                type: 'Point',
-                                coordinates: [-74.5, 40]
-                            }
-                        },
-                        {
-                            type: 'Feature',
-                            properties: {
-                                color: 'green',
-                                pulse_scale: t
-                            },
-                            geometry: {
-                                type: 'Point',
-                                coordinates: [-74.3, 40.1]
-                            }
-                        },
-                        {
-                            type: 'Feature',
-                            properties: {
-                                color: 'grey',
-                                pulse_scale: t
-                            },
-                            geometry: {
-                                type: 'Point',
-                                coordinates: [-74.7, 39.9]
-                            }
-                        }
-                    ]
-                });
-
-                animationId = requestAnimationFrame(animatePulse);
-            }
+                render: function(gl, matrix) {
+                    gl.useProgram(this.program);
+                    
+                    // Set uniforms
+                    gl.uniformMatrix4fv(this.u_matrix, false, matrix);
+                    gl.uniform1f(this.u_time, performance.now() / 1000.0);
+                    gl.uniform1f(this.u_zoom, map.getZoom());
+                    
+                    // Get source data
+                    const source = map.getSource('dot-point');
+                    const data = source._data;
+                    
+                    if (data && data.features) {
+                        // Prepare vertex data
+                        const positions = [];
+                        const colors = [];
+                        const ids = [];
+                        
+                        data.features.forEach(feature => {
+                            const coords = feature.geometry.coordinates;
+                            const color = feature.properties.color;
+                            const id = feature.properties.id;
+                            
+                            // Convert to screen coordinates
+                            const point = map.project([coords[0], coords[1]]);
+                            
+                            positions.push(point.x, point.y);
+                            
+                            // Color mapping
+                            let colorValue;
+                            if (color === 'red') colorValue = 0.0;
+                            else if (color === 'green') colorValue = 1.0;
+                            else colorValue = 2.0;
+                            
+                            colors.push(colorValue);
+                            ids.push(id);
+                        });
+                        
+                        // Upload data to GPU
+                        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+                        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+                        
+                        // Set up attributes
+                        gl.enableVertexAttribArray(this.a_pos);
+                        gl.vertexAttribPointer(this.a_pos, 2, gl.FLOAT, false, 0, 0);
+                        
+                        // Draw points
+                        gl.drawArrays(gl.POINTS, 0, positions.length / 2);
+                    }
+                }
+            });
             
-            animationId = requestAnimationFrame(animatePulse);
+            console.log('Custom WebGL pulsing dots created');
         }
 
-        // Stop the pulsing animation
-        function stopPulseAnimation() {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-        }
+        // WebGL shader handles animation directly - no JavaScript animation needed
 
         // Animation is now handled by the imported function - no additional animation needed
 
@@ -810,12 +856,10 @@
             }
         }
 
-        // Switch to data-driven mode (most efficient)
+        // Switch to WebGL mode (most efficient)
         function switchToPreRenderedMode() {
-            // Stop any existing animation
-            stopPulseAnimation();
-            
             // Clear existing layers and sources
+            if (map.getLayer('pulsing-webgl')) map.removeLayer('pulsing-webgl');
             if (map.getLayer('base-dot')) map.removeLayer('base-dot');
             if (map.getLayer('pulsing-circle')) map.removeLayer('pulsing-circle');
             if (map.getSource('dot-point')) map.removeSource('dot-point');
@@ -824,10 +868,10 @@
             const overlay = document.getElementById('pulsing-overlay');
             if (overlay) overlay.remove();
             
-            // Recreate with data-driven layers
+            // Recreate with WebGL layers
             setupPulsingDots();
             
-            document.getElementById('btn-prerendered').textContent = 'Data-Driven Mode (Active)';
+            document.getElementById('btn-prerendered').textContent = 'WebGL Mode (Active)';
             document.getElementById('btn-lowframe').textContent = 'Switch to Low Frame Mode';
             document.getElementById('btn-css').textContent = 'Switch to CSS Overlay Mode';
         }
