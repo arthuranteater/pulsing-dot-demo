@@ -549,34 +549,84 @@
             };
         }
 
-        // Setup pulsing dots using the pre-rendered function (most GPU-efficient)
+        // Setup pulsing dots using image-based layers
         function setupPulsingDots() {
-            console.log('Setting up pre-rendered pulsing dots (maximum GPU efficiency)...');
+            console.log('Setting up image-based pulsing dots...');
             
-            // Create pulsing dot instances using the pre-rendered function
-            const redDot = createPreRenderedPulsingDot(false, false); // Red dot
-            const greenDot = createPreRenderedPulsingDot(true, false); // Green dot (carrier vehicle)
-            const greyDot = createPreRenderedPulsingDot(false, true); // Grey dot
+            // Create pulsing dot instances
+            const redDot = createPreRenderedPulsingDot(false, false);
+            const greenDot = createPreRenderedPulsingDot(true, false);
+            const greyDot = createPreRenderedPulsingDot(false, true);
             
-            // Create markers using the pulsing dot functions
-            const redMarker = new mapboxgl.Marker(redDot)
-                .setLngLat([-74.5, 40])
-                .addTo(map);
-                
-            const greenMarker = new mapboxgl.Marker(greenDot)
-                .setLngLat([-74.3, 40.1])
-                .addTo(map);
-                
-            const greyMarker = new mapboxgl.Marker(greyDot)
-                .setLngLat([-74.7, 39.9])
-                .addTo(map);
+            // Initialize the dots (this triggers onAdd and pre-rendering)
+            redDot.onAdd();
+            greenDot.onAdd();
+            greyDot.onAdd();
             
-            // Store markers for controls
-            markers.red = [redMarker];
-            markers.green = [greenMarker];
-            markers.grey = [greyMarker];
+            // Create GeoJSON data for the dots
+            const pulsingDotsData = {
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        properties: { 
+                            id: 'red-dot',
+                            color: 'red'
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [-74.5, 40]
+                        }
+                    },
+                    {
+                        type: 'Feature',
+                        properties: { 
+                            id: 'green-dot',
+                            color: 'green'
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [-74.3, 40.1]
+                        }
+                    },
+                    {
+                        type: 'Feature',
+                        properties: { 
+                            id: 'grey-dot',
+                            color: 'grey'
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [-74.7, 39.9]
+                        }
+                    }
+                ]
+            };
             
-            console.log('Pulsing dots created with imported function');
+            // Add source
+            map.addSource('pulsing-dots', {
+                type: 'geojson',
+                data: pulsingDotsData
+            });
+            
+            // Add layer using the red dot as the image
+            map.addLayer({
+                id: 'pulsing-dots-layer',
+                type: 'symbol',
+                source: 'pulsing-dots',
+                layout: {
+                    'icon-image': 'pulsing-dot-red',
+                    'icon-size': 1,
+                    'icon-allow-overlap': true
+                }
+            });
+            
+            // Add the pulsing dot images to the map
+            map.addImage('pulsing-dot-red', redDot);
+            map.addImage('pulsing-dot-green', greenDot);
+            map.addImage('pulsing-dot-grey', greyDot);
+            
+            console.log('Image-based pulsing dots layer created');
         }
 
         // Animation is now handled by the imported function - no additional animation needed
@@ -680,17 +730,15 @@
 
         // Switch to pre-rendered mode (most GPU-efficient)
         function switchToPreRenderedMode() {
-            // Clear existing markers
-            Object.values(markers).flat().forEach(marker => marker.remove());
-            markers.red = [];
-            markers.green = [];
-            markers.grey = [];
+            // Clear existing layers and sources
+            if (map.getLayer('pulsing-dots-layer')) map.removeLayer('pulsing-dots-layer');
+            if (map.getSource('pulsing-dots')) map.removeSource('pulsing-dots');
             
             // Remove CSS overlay if it exists
             const overlay = document.getElementById('pulsing-overlay');
             if (overlay) overlay.remove();
             
-            // Recreate markers with pre-rendered function
+            // Recreate with image-based layers
             setupPulsingDots();
             
             document.getElementById('btn-prerendered').textContent = 'PreRendered Mode (Active)';
@@ -748,24 +796,24 @@
         // Legacy marker functions (kept for compatibility but not used in layer-based approach)
         // These are now replaced by the addLayer implementation above
 
-        // Toggle map markers visibility using marker visibility
+        // Toggle map layer visibility
         function toggleMapMarkers(color) {
             const button = document.getElementById(`btn-map-${color}`);
-            const markerList = markers[color];
+            const layer = map.getLayer('pulsing-dots-layer');
             
-            if (!markerList || markerList.length === 0) return;
+            if (!layer) return;
             
-            const marker = markerList[0];
-            const isVisible = marker.getElement().style.display !== 'none';
+            const isVisible = map.getLayoutProperty('pulsing-dots-layer', 'visibility') !== 'none';
             
             // Toggle visibility
-            marker.getElement().style.display = isVisible ? 'none' : 'block';
+            const visibility = isVisible ? 'none' : 'visible';
+            map.setLayoutProperty('pulsing-dots-layer', 'visibility', visibility);
             
             button.textContent = isVisible ? `Show ${color.charAt(0).toUpperCase() + color.slice(1)} Markers` : `Hide ${color.charAt(0).toUpperCase() + color.slice(1)} Markers`;
             button.classList.toggle('active', !isVisible);
         }
 
-        // Add a random marker using the imported function
+        // Add a random marker to the layer
         function addRandomMarker() {
             const colors = ['red', 'green', 'grey'];
             const color = colors[Math.floor(Math.random() * colors.length)];
@@ -775,23 +823,25 @@
             const lng = center.lng + (Math.random() - 0.5) * 0.1;
             const lat = center.lat + (Math.random() - 0.5) * 0.1;
             
-            // Create pre-rendered pulsing dot based on color
-            let pulsingDot;
-            if (color === 'green') {
-                pulsingDot = createPreRenderedPulsingDot(true, false); // Carrier vehicle
-            } else if (color === 'grey') {
-                pulsingDot = createPreRenderedPulsingDot(false, true); // Grey
-            } else {
-                pulsingDot = createPreRenderedPulsingDot(false, false); // Red
-            }
+            // Get current source data
+            const source = map.getSource('pulsing-dots');
+            const currentData = source._data;
             
-            // Create marker
-            const marker = new mapboxgl.Marker(pulsingDot)
-                .setLngLat([lng, lat])
-                .addTo(map);
+            // Add new feature
+            const newFeature = {
+                type: 'Feature',
+                properties: { 
+                    id: `${color}-dot-${Date.now()}`,
+                    color: color
+                },
+                geometry: {
+                    type: 'Point',
+                    coordinates: [lng, lat]
+                }
+            };
             
-            // Add to markers array
-            markers[color].push(marker);
+            currentData.features.push(newFeature);
+            source.setData(currentData);
         }
 
         // Original toggle animation function
@@ -847,36 +897,10 @@
             // Test animation after a short delay
             setTimeout(testAnimation, 1000);
             
-            // Add a fallback to ensure dots are visible
-            setTimeout(() => {
-                if (!map.getLayer('pulsing-rings')) {
-                    console.log('Creating fallback static dots...');
-                    createFallbackDots();
-                }
-            }, 2000);
+            // No fallback needed - using proper image-based layers
         });
 
-        // Fallback function to create simple static dots
-        function createFallbackDots() {
-            const dots = [
-                { color: '#db3713', lng: -74.5, lat: 40 },
-                { color: '#54c774', lng: -74.3, lat: 40.1 },
-                { color: '#374053', lng: -74.7, lat: 39.9 }
-            ];
-            
-            dots.forEach(dot => {
-                const el = document.createElement('div');
-                el.style.width = '20px';
-                el.style.height = '20px';
-                el.style.backgroundColor = dot.color;
-                el.style.borderRadius = '50%';
-                el.style.border = '2px solid #edf0f0';
-                
-                new mapboxgl.Marker(el)
-                    .setLngLat([dot.lng, dot.lat])
-                    .addTo(map);
-            });
-        }
+        // Using proper image-based layers - no fallbacks needed
     </script>
 </body>
 </html>
