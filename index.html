@@ -440,7 +440,7 @@
                         this.context.clearRect(0, 0, this.width, this.height);
                         this.context.beginPath();
                         this.context.arc(this.width / 2, this.height / 2, outerRadius, 0, Math.PI * 2);
-                        this.context.fillStyle = `${colors.outer.replace('0.6', (0.6 - t).toFixed(2)})`;
+                        this.context.fillStyle = colors.outer.replace('0.6', (0.6 - t).toFixed(2));
                         this.context.fill();
                         
                         this.context.beginPath();
@@ -529,7 +529,7 @@
 
                     context.fillStyle = this.stopPulse
                         ? `rgba(219, 55, 19, 0)`
-                        : `${colors.outer.replace('0.6', (0.6 - t).toFixed(2))}`;
+                        : colors.outer.replace('0.6', (0.6 - t).toFixed(2));
                     context.fill();
 
                     // Draw the inner circle.
